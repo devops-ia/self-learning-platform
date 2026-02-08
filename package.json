@@ -1,0 +1,43 @@
+{
+  "name": "learning-platform",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx src/lib/db/seed.ts"
+  },
+  "dependencies": {
+    "next": "^15",
+    "react": "^19",
+    "react-dom": "^19",
+    "@monaco-editor/react": "^4",
+    "@xterm/xterm": "^5",
+    "@xterm/addon-fit": "^0.10",
+    "drizzle-orm": "^0.39",
+    "better-sqlite3": "^11",
+    "js-yaml": "^4",
+    "zod": "^3",
+    "lucide-react": "^0.400"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7",
+    "@types/js-yaml": "^4",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.30",
+    "typescript": "^5",
+    "tailwindcss": "^4",
+    "@tailwindcss/postcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "^15",
+    "@eslint/eslintrc": "^3",
+    "tsx": "^4"
+  }
+}

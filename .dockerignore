@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Dependencies
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Build outputs
+.next
+.turbo
+dist
+build
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.jest
+.coverage
+coverage
+tests
+
+# Documentation
+docs
+*.md
+!README.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.circleci
+
+# Database
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+.editorconfig
+.npmrc
+Dockerfile
+docker-compose*.yml
+.dockerignore

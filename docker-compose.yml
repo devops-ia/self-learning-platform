@@ -1,0 +1,26 @@
+services:
+  learning-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: learning-platform
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      NODE_ENV: production
+      PORT: ${PORT:-3000}
+      HOST: ${HOST:-0.0.0.0}
+    volumes:
+      # Persist SQLite database
+      - learning-platform-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:${PORT:-3000}/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  learning-platform-data:
+    driver: local
