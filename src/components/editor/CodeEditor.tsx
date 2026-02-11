@@ -3,9 +3,10 @@
 import { useRef, useCallback } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
+import { useTheme } from "@/lib/theme/context";
 
 interface CodeEditorProps {
-  language: "hcl" | "yaml";
+  language: string;
   initialValue: string;
   onChange: (value: string) => void;
 }
@@ -15,6 +16,7 @@ export default function CodeEditor({
   initialValue,
   onChange,
 }: CodeEditorProps) {
+  const { theme } = useTheme();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
   const handleMount: OnMount = useCallback(
@@ -37,7 +39,7 @@ export default function CodeEditor({
         height="100%"
         defaultLanguage={monacoLanguage}
         defaultValue={initialValue}
-        theme="vs-dark"
+        theme={theme === "dark" ? "vs-dark" : "light"}
         onMount={handleMount}
         options={{
           fontSize: 14,

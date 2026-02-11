@@ -1,0 +1,216 @@
+id: "k8s-07-configmap-wrong-ref"
+title: "ConfigMap mal referenciado"
+briefing: "El Pod intenta leer un ConfigMap para configurar una variable de entorno, pero la referencia tiene errores. Corrige la estructura del manifiesto."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: config-app
+  spec:
+    containers:
+      - name: app
+        image: busybox:1.36
+        command: ["sh", "-c", "echo $DB_HOST && sleep 3600"]
+        env:
+          - name: DB_HOST
+            valueFrom:
+              configMapRef:
+                name: app-config
+
+hints:
+  - "El error dice que \"configMapRef\" es un campo desconocido. Revisa la documentación de envVar.valueFrom — el nombre del campo es ligeramente diferente."
+  - "El campo correcto es \"configMapKeyRef\" (con Key en el nombre). Además, necesitas indicar qué clave del ConfigMap quieres leer."
+  - "Solución: cambia \"configMapRef\" por \"configMapKeyRef\" y añade el campo key con el nombre de la clave, por ejemplo: key: db_host."
+successMessage: |
+  ¡Excelente! El Pod ahora puede leer correctamente la variable del ConfigMap.
+
+  Lo que aprendiste:
+  - Para leer una clave específica de un ConfigMap se usa "configMapKeyRef", no "configMapRef"
+  - configMapKeyRef necesita dos campos obligatorios: name (del ConfigMap) y key (la clave a leer)
+  - También existe envFrom.configMapRef para cargar todas las claves de un ConfigMap como variables de entorno
+  - Para Secrets, el campo equivalente es secretKeyRef
+  - Los errores de strict decoding te indican exactamente qué campo es desconocido
+
+i18n:
+  en:
+    title: "Incorrectly referenced ConfigMap"
+    briefing: "The Pod tries to read a ConfigMap to configure an environment variable, but the reference has errors. Fix the manifest structure."
+    hints:
+      - "The error says \"configMapRef\" is an unknown field. Check the envVar.valueFrom documentation — the field name is slightly different."
+      - "The correct field is \"configMapKeyRef\" (with Key in the name). You also need to specify which key of the ConfigMap you want to read."
+      - "Solution: change \"configMapRef\" to \"configMapKeyRef\" and add the key field with the key name, for example: key: db_host."
+    successMessage: |
+      Excellent! The Pod can now correctly read the variable from the ConfigMap.
+
+      What you learned:
+      - To read a specific key from a ConfigMap use "configMapKeyRef", not "configMapRef"
+      - configMapKeyRef needs two required fields: name (of the ConfigMap) and key (the key to read)
+      - There's also envFrom.configMapRef to load all keys from a ConfigMap as environment variables
+      - For Secrets, the equivalent field is secretKeyRef
+      - Strict decoding errors tell you exactly which field is unknown
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "Usa \"configMapKeyRef\" en lugar de \"configMapRef\"."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const containers = _get(parsed, 'spec.containers');
+          if (!Array.isArray(containers) || containers.length === 0) return { passed: true };
+          const env = containers[0].env;
+          if (!Array.isArray(env)) return { passed: true };
+          for (let i = 0; i < env.length; i++) {
+            const envVar = env[i];
+            const valueFrom = envVar.valueFrom;
+            if (valueFrom && "configMapRef" in valueFrom) {
+              return {
+                passed: false,
+                errorMessage: "Error: unknown field \"valueFrom.configMapRef\"\n\nEl campo correcto es \"configMapKeyRef\", no \"configMapRef\". configMapKeyRef referencia una clave específica dentro de un ConfigMap. configMapRef no existe como campo en la API de Kubernetes."
+              };
+            }
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Usa \"configMapKeyRef\" en lugar de \"configMapRef\"."
+
+  - type: intention
+    errorMessage: "configMapKeyRef necesita el campo key."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const containers = _get(parsed, 'spec.containers');
+          if (!Array.isArray(containers) || containers.length === 0) return { passed: true };
+          const env = containers[0].env;
+          if (!Array.isArray(env)) return { passed: true };
+          for (let i = 0; i < env.length; i++) {
+            const envVar = env[i];
+            const valueFrom = envVar.valueFrom;
+            if (valueFrom && valueFrom.configMapKeyRef) {
+              const keyRef = valueFrom.configMapKeyRef;
+              if (!("key" in keyRef)) {
+                return {
+                  passed: false,
+                  errorMessage: "Error: configMapKeyRef.key: Required value\n\nconfigMapKeyRef necesita tres campos:\n- name: el nombre del ConfigMap\n- key: la clave dentro del ConfigMap de la que leer el valor\n- optional (opcional): si true, no falla cuando el ConfigMap no existe"
+                };
+              }
+            }
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "configMapKeyRef necesita el campo key."
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: |
+        error: error validating "pod.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const env = _get(p, 'spec.containers.0.env');
+            if (!Array.isArray(env)) return false;
+            return env.some(function(e) { return e.valueFrom && "configMapRef" in e.valueFrom; });
+          } catch { return false; }
+      output: |
+        Error from server (BadRequest): error when creating "pod.yaml": Pod in version "v1" cannot be handled as a Pod:
+        strict decoding error: unknown field "spec.containers[0].env[0].valueFrom.configMapRef"
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const env = _get(p, 'spec.containers.0.env');
+            if (!Array.isArray(env)) return false;
+            return env.some(function(e) {
+              const vf = e.valueFrom;
+              return vf && vf.configMapKeyRef && !("key" in vf.configMapKeyRef);
+            });
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "pod.yaml": Pod "config-app" is invalid:
+        spec.containers[0].env[0].valueFrom.configMapKeyRef.key: Required value
+      exitCode: 1
+    - output: "pod/config-app created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const env = _get(p, 'spec.containers.0.env');
+            if (!Array.isArray(env)) return false;
+            const hasConfigMapRef = env.some(function(e) { return e.valueFrom && "configMapRef" in e.valueFrom; });
+            const hasKeyRefWithoutKey = env.some(function(e) {
+              const vf = e.valueFrom;
+              return vf && vf.configMapKeyRef && !("key" in vf.configMapKeyRef);
+            });
+            return !hasConfigMapRef && !hasKeyRefWithoutKey;
+          } catch { return false; }
+      output: |
+        NAME          READY   STATUS    RESTARTS   AGE
+        config-app   1/1     Running   0          5s
+      exitCode: 0
+    - output: "No resources found in default namespace."
+      exitCode: 0
+
+  "kubectl describe pod config-app":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const env = _get(p, 'spec.containers.0.env');
+            if (!Array.isArray(env)) return false;
+            const hasConfigMapRef = env.some(function(e) { return e.valueFrom && "configMapRef" in e.valueFrom; });
+            const hasKeyRefWithoutKey = env.some(function(e) {
+              const vf = e.valueFrom;
+              return vf && vf.configMapKeyRef && !("key" in vf.configMapKeyRef);
+            });
+            return !hasConfigMapRef && !hasKeyRefWithoutKey;
+          } catch { return false; }
+      output: |
+        Name:         config-app
+        Namespace:    default
+        Status:       Running
+        Containers:
+          app:
+            Image:          busybox:1.36
+            Environment:
+              DB_HOST:  <set to the key 'db_host' of config map 'app-config'>
+            State:          Running
+            Ready:          True
+        Events:
+          Type    Reason     Age   From               Message
+          ----    ------     ----  ----               -------
+          Normal  Scheduled  10s   default-scheduler  Successfully assigned default/config-app
+          Normal  Pulled     9s    kubelet            Container image already present
+          Normal  Created    9s    kubelet            Created container app
+          Normal  Started    8s    kubelet            Started container app
+      exitCode: 0
+    - output: "Error from server (NotFound): pods \"config-app\" not found"
+      exitCode: 1

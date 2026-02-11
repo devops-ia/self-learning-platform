@@ -1,6 +1,6 @@
 # DevOps Learning Platform
 
-Interactive learning platform for Terraform and Kubernetes. Learn by fixing broken code, not by reading docs.
+Interactive learning platform for DevOps technologies. Learn by fixing broken code, not by reading docs.
 
 ## Overview
 
@@ -28,16 +28,21 @@ Interactive learning platform for Terraform and Kubernetes. Learn by fixing brok
 ## Features
 
 - **Interactive exercises** with a code editor (Monaco), simulated terminal (xterm.js), and instant feedback
-- **Terraform module: fix provider misconfigurations, declare missing variables
-- **Kubernetes module: fix invalid Pod YAML, debug CrashLoopBackOff
-- **Progress tracking: exercises unlock sequentially as you complete prerequisites
-- **Realistic simulation: terminal commands produce output identical to real `terraform` and `kubectl` CLI
+- **Multiple modules**: Terraform, Kubernetes, Ansible (extensible via admin panel or YAML)
+- **Database-backed exercises**: stored in SQLite, managed via admin panel or YAML import
+- **Authentication**: local accounts, OAuth (Google/GitHub/Azure), TOTP 2FA, WebAuthn passkeys
+- **Admin panel**: manage users, exercises, modules, and audit logs
+- **Dark/light theme** with automatic OS preference detection
+- **i18n**: Spanish (default) and English, extensible to other languages
+- **Realistic simulation**: terminal commands produce output identical to real CLI tools
+- **Semantic versioning**: automated releases via semantic-release
 
 ## Tech Stack
 
 - Next.js 15 (App Router) + TypeScript
 - Tailwind CSS 4
 - SQLite via Drizzle ORM + better-sqlite3
+- iron-session + argon2 (auth)
 - Monaco Editor (`@monaco-editor/react`)
 - xterm.js (`@xterm/xterm`)
 
@@ -52,14 +57,19 @@ Interactive learning platform for Terraform and Kubernetes. Learn by fixing brok
 # Install dependencies
 npm install
 
-# Create the SQLite database
+# Create the SQLite database and default admin user
 npm run db:seed
+
+# Import exercises from YAML into the database
+npm run exercises:import
 
 # Start the development server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+Default admin credentials: `admin@devopslab.local` / `admin1234` (configurable via `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars).
 
 ## Available Scripts
 
@@ -69,7 +79,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
-| `npm run db:seed` | Create/reset database tables |
+| `npm run db:seed` | Create/reset database tables + default admin user |
+| `npm run exercises:import` | Import YAML exercises into database |
 
 ## Production Deployment
 
@@ -79,8 +90,10 @@ Open [http://localhost:3000](http://localhost:3000).
 # Install dependencies
 npm ci
 
-# Create the database
+# Create the database and import exercises
+mkdir -p data
 npm run db:seed
+npm run exercises:import
 
 # Build the application
 npm run build
@@ -159,9 +172,9 @@ The container listens on all interfaces (`0.0.0.0`) by default. Environment vari
 
 **Multi-stage Docker build** (3 stages):
 
-1. **builder: Installs build deps, compiles Next.js app, compiles `better-sqlite3` (~500MB, discarded)
-2. **db-init: Preserves database schema and dependencies (~200MB, discarded)
-3. **runner: Minimal Alpine base with production artifacts only (~350MB, final image)
+1. **builder**: Installs build deps, compiles Next.js app, compiles `better-sqlite3` (~500MB, discarded)
+2. **db-init**: Preserves database schema and dependencies (~200MB, discarded)
+3. **runner**: Minimal Alpine base with production artifacts only (~350MB, final image)
 
 **Key features:**
 
@@ -221,12 +234,37 @@ docker exec -it learning-platform sh
 chown -R nextjs:nodejs /app/data
 ```
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/exercises.md](docs/exercises.md) | How to add exercises (YAML, admin panel, API, direct DB) |
+| [docs/database.md](docs/database.md) | Database management, switching to PostgreSQL/MySQL/Turso |
+| [docs/configuration.md](docs/configuration.md) | All environment variables, config files, key source files |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Full contributing guide (YAML format, Check DSL, i18n, terminal commands) |
+
 ## Project Structure
 
-- `src/app/`: Next.js App Router pages and API routes with automatic file-based routing
-- `src/components/`: Reusable React components organized by functional domain
-- `src/lib/`: Core business logic: exercises, validators, database, utilities, and hooks
-- `scripts/`: Helper scripts for database setup and server initialization
+```
+src/
+  app/              Next.js App Router (pages + API routes)
+    admin/           Admin panel (users, exercises, modules, audit)
+    api/             REST API endpoints
+    modules/         Dynamic [module]/[exerciseId] routes
+  components/       React components (editor, terminal, lab, auth, admin)
+  lib/
+    auth/            Authentication (session, password, OAuth, TOTP, passkeys)
+    db/              Drizzle ORM schema + connection + seed
+    exercises/       Exercise loader (db-loader.ts = runtime Check interpreter)
+    i18n/            Internationalization (locales, context provider)
+    theme/           Dark/light theme provider
+    validators/      Unified validation engine
+    terminal/        Terminal command simulator
+exercises/          YAML exercise source files + module config
+scripts/            Build scripts (import-exercises.ts)
+docs/               Documentation
+data/               SQLite database file (gitignored)
+```
 
 ## License
 

@@ -1,0 +1,192 @@
+id: "k8s-04-deployment-no-selector"
+title: "Deployment sin selector"
+briefing: "Este Deployment no puede gestionar Pods porque falta un campo clave. El API server rechaza el manifiesto."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: frontend
+  spec:
+    replicas: 3
+    template:
+      metadata:
+        labels:
+          app: frontend
+      spec:
+        containers:
+          - name: web
+            image: nginx:1.25
+            ports:
+              - containerPort: 80
+
+hints:
+  - "El error menciona spec.selector como campo requerido. Un Deployment necesita saber qué Pods le pertenecen."
+  - "El selector usa matchLabels para encontrar Pods. Las labels del selector deben coincidir con las labels del template."
+  - "Solución: añade un bloque selector debajo de spec, al mismo nivel que replicas:\n  selector:\n    matchLabels:\n      app: frontend"
+successMessage: |
+  ¡Perfecto! El Deployment puede ahora gestionar sus Pods correctamente.
+
+  Lo que aprendiste:
+  - Un Deployment necesita spec.selector para identificar qué Pods le pertenecen
+  - El selector.matchLabels debe coincidir con spec.template.metadata.labels
+  - Si el selector no coincide con las labels del template, el API server rechaza el manifiesto
+  - Este mecanismo permite que un Deployment solo gestione los Pods que él ha creado
+
+i18n:
+  en:
+    title: "Deployment without selector"
+    briefing: "This Deployment cannot manage Pods because a key field is missing. The API server rejects the manifest."
+    hints:
+      - "The error mentions spec.selector as a required field. A Deployment needs to know which Pods belong to it."
+      - "The selector uses matchLabels to find Pods. The selector labels must match the template labels."
+      - "Solution: add a selector block under spec, at the same level as replicas:\n  selector:\n    matchLabels:\n      app: frontend"
+    successMessage: |
+      Perfect! The Deployment can now manage its Pods correctly.
+
+      What you learned:
+      - A Deployment needs spec.selector to identify which Pods belong to it
+      - The selector.matchLabels must match spec.template.metadata.labels
+      - If the selector doesn't match the template labels, the API server rejects the manifest
+      - This mechanism allows a Deployment to only manage the Pods it has created
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "Falta el campo spec.selector en el Deployment."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const selector = _get(parsed, 'spec.selector');
+          if (!selector) {
+            return {
+              passed: false,
+              errorMessage: "Error: spec.selector: Required value\n\nUn Deployment necesita un campo spec.selector para saber qué Pods gestionar. Sin él, Kubernetes no puede asociar los Pods creados por el template con este Deployment."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Falta el campo spec.selector."
+
+  - type: intention
+    errorMessage: "El selector debe coincidir con las labels del template."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const selector = _get(parsed, 'spec.selector');
+          if (!selector) return { passed: true };
+          const matchLabels = selector.matchLabels;
+          const templateLabels = _get(parsed, 'spec.template.metadata.labels');
+          if (!matchLabels || !templateLabels) return { passed: true };
+          for (const key in matchLabels) {
+            if (templateLabels[key] !== matchLabels[key]) {
+              return {
+                passed: false,
+                errorMessage: "Error: spec.selector no coincide con spec.template.metadata.labels\n\nEl selector.matchLabels debe coincidir exactamente con las labels del template. Si no coinciden, el Deployment no puede gestionar los Pods que crea."
+              };
+            }
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El selector debe coincidir con las labels del template."
+
+terminalCommands:
+  "kubectl apply -f deployment.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: "error: error parsing deployment.yaml: error converting YAML to JSON"
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            return p && !_get(p, 'spec.selector');
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "deployment.yaml": Deployment.apps "frontend" is invalid:
+        spec.selector: Required value
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const selector = _get(p, 'spec.selector');
+            if (!selector) return false;
+            const matchLabels = selector.matchLabels;
+            const templateLabels = _get(p, 'spec.template.metadata.labels');
+            if (!matchLabels || !templateLabels) return false;
+            for (const key in matchLabels) {
+              if (templateLabels[key] !== matchLabels[key]) return true;
+            }
+            return false;
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "deployment.yaml": Deployment.apps "frontend" is invalid:
+        spec.template.metadata.labels: Invalid value: selector does not match template labels
+      exitCode: 1
+    - output: "deployment.apps/frontend created"
+      exitCode: 0
+
+  "kubectl get deployments":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const selector = _get(p, 'spec.selector');
+            const matchLabels = selector && selector.matchLabels;
+            const templateLabels = _get(p, 'spec.template.metadata.labels');
+            if (!matchLabels || !templateLabels) return false;
+            for (const key in matchLabels) {
+              if (templateLabels[key] !== matchLabels[key]) return true;
+            }
+            return false;
+          } catch { return true; }
+      output: "No resources found in default namespace."
+      exitCode: 0
+    - output: |
+        NAME       READY   UP-TO-DATE   AVAILABLE   AGE
+        frontend   3/3     3            3           10s
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const selector = _get(p, 'spec.selector');
+            const matchLabels = selector && selector.matchLabels;
+            const templateLabels = _get(p, 'spec.template.metadata.labels');
+            if (!matchLabels || !templateLabels) return false;
+            for (const key in matchLabels) {
+              if (templateLabels[key] !== matchLabels[key]) return true;
+            }
+            return false;
+          } catch { return true; }
+      output: "No resources found in default namespace."
+      exitCode: 0
+    - output: |
+        NAME                        READY   STATUS    RESTARTS   AGE
+        frontend-6b8d4f7c9a-ax0r   1/1     Running   0          10s
+        frontend-6b8d4f7c9a-bx1r   1/1     Running   0          10s
+        frontend-6b8d4f7c9a-cx2r   1/1     Running   0          10s
+      exitCode: 0

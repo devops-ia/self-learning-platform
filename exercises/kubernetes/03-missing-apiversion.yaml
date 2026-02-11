@@ -1,0 +1,175 @@
+id: "k8s-03-missing-apiversion"
+title: "Pod sin apiVersion"
+briefing: "El API server rechaza este manifiesto. Falta un campo obligatorio que todo recurso de Kubernetes necesita."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  kind: Pod
+  metadata:
+    name: my-pod
+    labels:
+      app: my-app
+  spec:
+    containers:
+      - name: app
+        image: nginx:1.25
+        ports:
+          - containerPort: 80
+
+hints:
+  - "El error dice que apiVersion no está definido. Todo recurso de Kubernetes necesita tres campos raíz: apiVersion, kind y metadata."
+  - "Para un Pod, el apiVersion correcto es v1. Los Pods son parte del core API group."
+  - "Solución: añade \"apiVersion: v1\" como primera línea del manifiesto, antes de \"kind: Pod\"."
+successMessage: |
+  ¡Correcto! El Pod tiene ahora un apiVersion válido.
+
+  Lo que aprendiste:
+  - Todo recurso de Kubernetes necesita tres campos obligatorios: apiVersion, kind y metadata
+  - Los Pods usan apiVersion: v1 (core API group)
+  - Los Deployments y ReplicaSets usan apiVersion: apps/v1
+  - El API server valida el esquema completo antes de crear cualquier recurso
+  - Sin apiVersion, Kubernetes no sabe cómo interpretar el manifiesto
+
+i18n:
+  en:
+    title: "Pod without apiVersion"
+    briefing: "The API server rejects this manifest. A required field that every Kubernetes resource needs is missing."
+    hints:
+      - "The error says apiVersion is not defined. Every Kubernetes resource needs three root fields: apiVersion, kind, and metadata."
+      - "For a Pod, the correct apiVersion is v1. Pods are part of the core API group."
+      - "Solution: add \"apiVersion: v1\" as the first line of the manifest, before \"kind: Pod\"."
+    successMessage: |
+      Correct! The Pod now has a valid apiVersion.
+
+      What you learned:
+      - Every Kubernetes resource needs three required fields: apiVersion, kind, and metadata
+      - Pods use apiVersion: v1 (core API group)
+      - Deployments and ReplicaSets use apiVersion: apps/v1
+      - The API server validates the complete schema before creating any resource
+      - Without apiVersion, Kubernetes doesn't know how to interpret the manifest
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido") + "\n\nRevisa la indentación y la sintaxis del YAML."
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "Falta el campo apiVersion en el manifiesto."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          if (!("apiVersion" in parsed)) {
+            return {
+              passed: false,
+              errorMessage: "Error: falta el campo \"apiVersion\"\n\nTodo recurso de Kubernetes necesita un campo apiVersion en el nivel raíz del manifiesto. Este campo indica al API server qué versión del esquema usar para validar el recurso."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Falta el campo apiVersion."
+
+  - type: intention
+    errorMessage: "El apiVersion debe ser v1 para un Pod."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          if (!("apiVersion" in parsed)) return { passed: true };
+          if (parsed.apiVersion !== "v1") {
+            return {
+              passed: false,
+              errorMessage: "Error: apiVersion \"" + String(parsed.apiVersion) + "\" no es válido para un Pod\n\nLos Pods pertenecen al core API group y usan apiVersion: v1. Otros recursos como Deployments usan \"apps/v1\"."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El apiVersion debe ser v1 para un Pod."
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: |
+        error: error validating "pod.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            return !p || !("apiVersion" in p);
+          } catch { return false; }
+      output: |
+        error: error validating "pod.yaml": error validating data: apiVersion not set
+
+        The Kubernetes API server requires every resource to specify an apiVersion.
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            return p && "apiVersion" in p && p.apiVersion !== "v1";
+          } catch { return false; }
+      output: |
+        error: unable to recognize "pod.yaml": no matches for kind "Pod" in version "{{apiVersion}}"
+      exitCode: 1
+    - output: "pod/my-pod created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            return p && p.apiVersion === "v1";
+          } catch { return false; }
+      output: |
+        NAME        READY   STATUS    RESTARTS   AGE
+        my-pod      1/1     Running   0          5s
+      exitCode: 0
+    - output: "No resources found in default namespace."
+      exitCode: 0
+
+  "kubectl describe pod my-pod":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            return p && p.apiVersion === "v1";
+          } catch { return false; }
+      output: |
+        Name:         my-pod
+        Namespace:    default
+        Status:       Running
+        IP:           10.244.0.7
+        Containers:
+          app:
+            Image:          nginx:1.25
+            Port:           80/TCP
+            State:          Running
+              Started:      Sun, 01 Jan 2025 00:00:00 +0000
+            Ready:          True
+        Events:
+          Type    Reason     Age   From               Message
+          ----    ------     ----  ----               -------
+          Normal  Scheduled  10s   default-scheduler  Successfully assigned default/my-pod
+          Normal  Pulled     9s    kubelet            Container image already present
+          Normal  Created    9s    kubelet            Created container app
+          Normal  Started    8s    kubelet            Started container app
+      exitCode: 0
+    - output: "Error from server (NotFound): pods \"my-pod\" not found"
+      exitCode: 1

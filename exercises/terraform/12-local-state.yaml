@@ -1,0 +1,222 @@
+id: "tf-12-local-state"
+title: "State local en producción"
+briefing: "Esta configuración guarda el state en local. En un equipo, esto causa conflictos y pérdida de datos. Configura un backend remoto."
+prerequisites: []
+language: "hcl"
+initialCode: |
+  terraform {
+    required_providers {
+      aws = {
+        source  = "hashicorp/aws"
+        version = ">= 5.0"
+      }
+    }
+  }
+
+  provider "aws" {
+    region = "us-east-1"
+  }
+
+  resource "aws_instance" "web" {
+    ami           = "ami-0c55b159cbfafe1f0"
+    instance_type = "t2.micro"
+  }
+
+  resource "aws_s3_bucket" "logs" {
+    bucket = "my-app-logs"
+  }
+
+  resource "aws_security_group" "web" {
+    name = "web-sg"
+
+    ingress {
+      from_port   = 80
+      to_port     = 80
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  }
+
+hints:
+  - "Ejecuta terraform init y observa que dice \"Using local backend\". El state se guarda en un fichero local."
+  - "Necesitas añadir un bloque backend dentro de terraform {}. El más común con AWS es backend \"s3\" {}."
+  - "Solución: añade backend \"s3\" { bucket = \"mi-bucket-terraform\" key = \"prod/terraform.tfstate\" region = \"us-east-1\" } dentro del bloque terraform {}."
+successMessage: |
+  ¡Correcto! El state ahora se guardará en un backend remoto.
+
+  Lo que aprendiste:
+  - Sin backend remoto, el state se guarda en terraform.tfstate (local)
+  - El state local no se puede compartir ni tiene locking
+  - El backend S3 necesita: bucket, key y region
+  - Con S3, puedes activar locking con DynamoDB para evitar ejecuciones concurrentes
+  - terraform init -migrate-state migra el state local al nuevo backend
+  - Nunca guardes el state local en git (añade terraform.tfstate a .gitignore)
+
+i18n:
+  en:
+    title: "Local state in production"
+    briefing: "This configuration saves state locally. In a team, this causes conflicts and data loss. Configure a remote backend."
+    hints:
+      - "Run terraform init and notice it says \"Using local backend\". The state is saved in a local file."
+      - "You need to add a backend block inside terraform {}. The most common with AWS is backend \"s3\" {}."
+      - "Solution: add backend \"s3\" { bucket = \"my-terraform-bucket\" key = \"prod/terraform.tfstate\" region = \"us-east-1\" } inside the terraform {} block."
+    successMessage: |
+      Correct! The state will now be saved in a remote backend.
+
+      What you learned:
+      - Without a remote backend, state is saved in terraform.tfstate (local)
+      - Local state cannot be shared and has no locking
+      - The S3 backend needs: bucket, key and region
+      - With S3, you can enable locking with DynamoDB to prevent concurrent executions
+      - terraform init -migrate-state migrates local state to the new backend
+      - Never save local state in git (add terraform.tfstate to .gitignore)
+
+validations:
+  - type: semantic
+    errorMessage: "Falta un backend remoto."
+    check:
+      not_contains: "backend"
+    failMessage: |
+      Error: El state se guarda en local
+
+      Sin un backend remoto, el fichero terraform.tfstate se guarda en el disco local.
+      Esto es peligroso en entornos compartidos:
+      - No se puede compartir el state entre miembros del equipo
+      - No hay locking: dos personas pueden ejecutar terraform a la vez y corromper el state
+      - Si pierdes el fichero, pierdes todo el conocimiento de Terraform sobre tu infra
+
+      Configura un backend remoto (S3, GCS, Azure Blob) dentro del bloque terraform {}.
+
+  - type: intention
+    errorMessage: "El backend S3 necesita un bucket."
+    check:
+      custom: |
+        (code) => {
+          if (code.includes("backend") && !/bucket\s*=/.test(code)) {
+            return {
+              passed: false,
+              errorMessage: `Error: El backend necesita un bucket
+
+        El backend S3 requiere al menos bucket, key y region para funcionar.
+        Añade estos argumentos dentro del bloque backend "s3" {}.`
+            };
+          }
+          return { passed: true };
+        }
+    failMessage: |
+      Error: El backend S3 necesita un bucket
+
+      El backend S3 requiere al menos tres argumentos para funcionar correctamente:
+      - bucket: nombre del bucket S3 donde guardar el state
+      - key: ruta del archivo dentro del bucket
+      - region: región de AWS donde está el bucket
+
+      Ejemplo:
+        backend "s3" {
+          bucket = "mi-bucket-terraform"
+          key    = "prod/terraform.tfstate"
+          region = "us-east-1"
+        }
+
+      Sin el argumento bucket, Terraform no sabe dónde guardar el fichero de state.
+
+  - type: intention
+    errorMessage: "El backend S3 necesita una key."
+    check:
+      custom: |
+        (code) => {
+          if (code.includes("backend") && !/key\s*=/.test(code)) {
+            return {
+              passed: false,
+              errorMessage: `Error: El backend necesita una key
+
+        La key define la ruta del fichero de state dentro del bucket.
+        Por ejemplo: key = "prod/terraform.tfstate".`
+            };
+          }
+          return { passed: true };
+        }
+    failMessage: |
+      Error: El backend S3 necesita una key
+
+      El argumento key define la ruta del fichero de state dentro del bucket S3.
+      Es necesario para especificar dónde exactamente se guardará el state.
+
+      Ejemplo:
+        key = "prod/terraform.tfstate"
+
+      La key permite organizar el state de múltiples proyectos o entornos en el
+      mismo bucket usando diferentes rutas:
+        - "prod/terraform.tfstate" para producción
+        - "dev/terraform.tfstate" para desarrollo
+        - "proyecto-x/terraform.tfstate" para proyectos específicos
+
+terminalCommands:
+  "terraform init":
+    - when:
+        not_contains: "backend"
+      output: |
+        Initializing the backend...
+
+        Terraform has been successfully initialized!
+        (Using local backend — state stored in terraform.tfstate)
+      exitCode: 0
+    - when:
+        not_match: 'bucket\s*='
+      output: |
+        Initializing the backend...
+
+        ╷
+        │ Error: Missing required argument
+        │
+        │ The argument "bucket" is required for the S3 backend.
+        ╵
+      exitCode: 1
+    - output: |
+        Initializing the backend...
+
+        Successfully configured the backend "s3"! Terraform will automatically
+        use this backend unless the backend configuration changes.
+
+        Initializing provider plugins...
+        - Finding hashicorp/aws versions matching ">= 5.0"...
+        - Installing hashicorp/aws v5.31.0...
+        - Installed hashicorp/aws v5.31.0 (signed by HashiCorp)
+
+        Terraform has been successfully initialized!
+      exitCode: 0
+
+  "terraform plan":
+    - when:
+        not_contains: "backend"
+      output: |
+        Terraform used the selected providers to generate the following execution
+        plan. Resource actions are indicated with the following symbols:
+          + create
+
+        Plan: 3 to add, 0 to change, 0 to destroy.
+
+        Warning: State is stored locally in terraform.tfstate.
+        This is not recommended for team environments. If multiple
+        people run terraform at the same time, state corruption may occur.
+        Consider configuring a remote backend (S3, GCS, Azure Blob, etc.).
+      exitCode: 0
+    - output: |
+        Terraform used the selected providers to generate the following execution
+        plan. Resource actions are indicated with the following symbols:
+          + create
+
+        Plan: 3 to add, 0 to change, 0 to destroy.
+      exitCode: 0
+
+  "terraform state list":
+    - when:
+        not_contains: "backend"
+      output: |
+        (Reading state from local file: terraform.tfstate)
+
+        Warning: Local state detected. In a shared environment, this
+        can lead to state file conflicts and data loss.
+      exitCode: 0
+    - output: "(Reading state from remote backend)"
+      exitCode: 0

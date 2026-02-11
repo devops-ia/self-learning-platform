@@ -21,11 +21,11 @@ export type TerminalCommandHandler = (code: string) => TerminalResponse;
 
 export interface Exercise {
   id: string;
-  module: "terraform" | "kubernetes";
+  module: string;
   title: string;
   briefing: string;
   initialCode: string;
-  language: "hcl" | "yaml";
+  language: string;
   terminalCommands: Record<string, TerminalCommandHandler>;
   validations: ValidationRule[];
   prerequisites: string[];

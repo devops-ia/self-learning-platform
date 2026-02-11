@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle, Lock, Circle } from "lucide-react";
+import { useT } from "@/lib/i18n/context";
 
 interface ExerciseStatus {
   id: string;
@@ -12,7 +13,7 @@ interface ExerciseStatus {
 }
 
 interface ProgressTrackerProps {
-  module: "terraform" | "kubernetes";
+  module: string;
   exercises: ExerciseStatus[];
 }
 
@@ -20,6 +21,7 @@ export default function ProgressTracker({
   module,
   exercises,
 }: ProgressTrackerProps) {
+  const { t } = useT();
   const [statuses, setStatuses] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -70,11 +72,11 @@ export default function ProgressTracker({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "completed":
-        return "Completado";
+        return t.progress.completed;
       case "locked":
-        return "Bloqueado";
+        return t.progress.locked;
       default:
-        return "Disponible";
+        return t.progress.available;
     }
   };
 
@@ -93,7 +95,7 @@ export default function ProgressTracker({
             )}
             {isAccessible ? (
               <Link
-                href={`/modules/${exercise.id.startsWith("tf") ? "terraform" : "kubernetes"}/${exercise.id}`}
+                href={`/modules/${module}/${exercise.id}`}
                 className="block border border-[var(--border)] rounded-lg p-4 hover:bg-[var(--surface-hover)] transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -116,7 +118,7 @@ export default function ProgressTracker({
                     <div className="text-sm text-[var(--muted)]">
                       {getStatusLabel(status)}
                       {exercise.prerequisites.length > 0 &&
-                        ` — completa ${exercise.prerequisites.length === 1 ? "el ejercicio" : "los ejercicios"} anterior${exercise.prerequisites.length > 1 ? "es" : ""}`}
+                        ` — ${exercise.prerequisites.length === 1 ? t.progress.prerequisiteSingular : t.progress.prerequisitePlural}`}
                     </div>
                   </div>
                 </div>

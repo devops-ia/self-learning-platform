@@ -1,5 +1,9 @@
 import { getExercise } from "../exercises";
 import { ValidationResult } from "../exercises/types";
+import { es } from "../i18n/locales/es";
+import { en } from "../i18n/locales/en";
+
+const locales: Record<string, typeof es> = { es, en };
 
 export interface ValidationResponse {
   passed: boolean;
@@ -16,14 +20,16 @@ export interface ValidationResponse {
 export function validateExercise(
   exerciseId: string,
   code: string,
-  failureCount: number = 0
+  failureCount: number = 0,
+  lang: string = "es"
 ): ValidationResponse {
+  const t = locales[lang] || es;
   const exercise = getExercise(exerciseId);
   if (!exercise) {
     return {
       passed: false,
       results: [],
-      summary: "Ejercicio no encontrado.",
+      summary: `${t.exercise.notFound}.`,
       hintsUsed: 0,
     };
   }

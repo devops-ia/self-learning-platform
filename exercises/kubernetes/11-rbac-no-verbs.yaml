@@ -1,0 +1,171 @@
+id: "k8s-11-rbac-no-verbs"
+title: "Role sin permisos"
+briefing: "Este Role define recursos pero no concede ninguna acción sobre ellos. Falta un campo obligatorio en las reglas."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: pod-reader
+    namespace: default
+  rules:
+    - apiGroups: [""]
+      resources: ["pods", "pods/log"]
+
+hints:
+  - "El error indica que verbs es un campo requerido. Una regla RBAC necesita indicar qué acciones se permiten sobre los recursos."
+  - "Los verbos más comunes son: get, list, watch (lectura), create, update, patch, delete (escritura). Para un \"reader\" necesitas verbos de solo lectura."
+  - "Solución: añade verbs: [\"get\", \"list\", \"watch\"] a la regla para permitir solo lectura de Pods."
+successMessage: |
+  ¡Correcto! El Role ahora concede permisos de lectura sobre Pods.
+
+  Lo que aprendiste:
+  - Un Role RBAC necesita tres campos en cada regla: apiGroups, resources y verbs
+  - Los verbos definen qué acciones se permiten: get, list, watch, create, update, patch, delete
+  - El apiGroup "" (vacío) se refiere al core API group (pods, services, etc.)
+  - Un Role solo aplica dentro de un namespace; ClusterRole aplica a todo el cluster
+  - Para vincular un Role a un usuario o ServiceAccount necesitas un RoleBinding
+
+i18n:
+  en:
+    title: "Role without permissions"
+    briefing: "This Role defines resources but doesn't grant any actions on them. A required field is missing in the rules."
+    hints:
+      - "The error indicates that verbs is a required field. An RBAC rule needs to specify what actions are allowed on the resources."
+      - "The most common verbs are: get, list, watch (read), create, update, patch, delete (write). For a \"reader\" you need read-only verbs."
+      - "Solution: add verbs: [\"get\", \"list\", \"watch\"] to the rule to allow read-only access to Pods."
+    successMessage: |
+      Correct! The Role now grants read permissions on Pods.
+
+      What you learned:
+      - An RBAC Role needs three fields in each rule: apiGroups, resources, and verbs
+      - Verbs define what actions are allowed: get, list, watch, create, update, patch, delete
+      - The apiGroup "" (empty) refers to the core API group (pods, services, etc.)
+      - A Role only applies within a namespace; ClusterRole applies to the entire cluster
+      - To bind a Role to a user or ServiceAccount you need a RoleBinding
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "Cada regla debe tener un campo verbs con al menos un valor."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const rules = parsed.rules;
+          if (!Array.isArray(rules) || rules.length === 0) return { passed: true };
+          for (let i = 0; i < rules.length; i++) {
+            const rule = rules[i];
+            if (!rule.verbs || !Array.isArray(rule.verbs) || rule.verbs.length === 0) {
+              return {
+                passed: false,
+                errorMessage: "Error: rules[" + i + "].verbs: Required value\n\nCada regla de un Role necesita el campo verbs para especificar qué acciones se permiten. Sin verbs, la regla no concede ningún permiso."
+              };
+            }
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Cada regla debe tener un campo verbs."
+
+  - type: intention
+    errorMessage: "Los verbos deben ser acciones válidas de la API de Kubernetes."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const rules = parsed.rules;
+          if (!Array.isArray(rules)) return { passed: true };
+          const validVerbs = ["get", "list", "watch", "create", "update", "patch", "delete", "deletecollection", "*"];
+          for (let i = 0; i < rules.length; i++) {
+            const rule = rules[i];
+            const verbs = rule.verbs;
+            if (!Array.isArray(verbs)) continue;
+            for (let j = 0; j < verbs.length; j++) {
+              if (validVerbs.indexOf(verbs[j]) === -1) {
+                return {
+                  passed: false,
+                  errorMessage: "Warning: verbo \"" + verbs[j] + "\" no es un verbo estándar de la API de Kubernetes\n\nLos verbos válidos son: get, list, watch, create, update, patch, delete, deletecollection, *"
+                };
+              }
+            }
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Los verbos deben ser acciones válidas."
+
+terminalCommands:
+  "kubectl apply -f role.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: |
+        error: error validating "role.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const rules = p && p.rules;
+            if (!Array.isArray(rules) || rules.length === 0) return false;
+            return rules.some(function(r) { return !r.verbs || !Array.isArray(r.verbs) || r.verbs.length === 0; });
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "role.yaml": Role.rbac.authorization.k8s.io "pod-reader" is invalid:
+        rules[0].verbs: Required value: verbs must contain at least one value
+      exitCode: 1
+    - output: "role.rbac.authorization.k8s.io/pod-reader created"
+      exitCode: 0
+
+  "kubectl get roles":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const rules = p && p.rules;
+            if (!Array.isArray(rules)) return false;
+            return rules.every(function(r) { return r.verbs && Array.isArray(r.verbs) && r.verbs.length > 0; });
+          } catch { return false; }
+      output: |
+        NAME          CREATED AT
+        pod-reader   2025-01-01T00:00:00Z
+      exitCode: 0
+    - output: "No resources found in default namespace."
+      exitCode: 0
+
+  "kubectl describe role pod-reader":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const rules = p && p.rules;
+            if (!Array.isArray(rules)) return false;
+            return rules.every(function(r) { return r.verbs && Array.isArray(r.verbs) && r.verbs.length > 0; });
+          } catch { return false; }
+      output: |
+        Name:         pod-reader
+        Labels:       <none>
+        Annotations:  <none>
+        PolicyRule:
+          Resources  Non-Resource URLs  Resource Names  Verbs
+          ---------  -----------------  --------------  -----
+          pods, pods/log  []  []  [get, list, watch]
+      exitCode: 0
+    - output: "Error from server (NotFound): roles.rbac.authorization.k8s.io \"pod-reader\" not found"
+      exitCode: 1

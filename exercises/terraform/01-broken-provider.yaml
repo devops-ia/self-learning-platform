@@ -1,0 +1,172 @@
+id: "tf-01-broken-provider"
+title: "El provider roto"
+briefing: "Este código tiene un provider de AWS mal configurado. terraform init va a fallar. Encuentra y corrige el error."
+prerequisites: []
+language: "hcl"
+initialCode: |
+  provider "aws" {
+    zones  = "us-east-1"
+    profile = "default"
+  }
+
+  resource "aws_instance" "web" {
+    ami           = "ami-0c55b159cbfafe1f0"
+    instance_type = "t2.micro"
+  }
+hints:
+  - "Fíjate en el nombre del atributo del provider: ¿\"zones\" es un atributo válido de AWS?"
+  - "Terraform necesita un bloque terraform { required_providers { } } para saber de dónde bajar los providers."
+  - "La solución necesita: 1) bloque terraform con required_providers para aws con source \"hashicorp/aws\", 2) cambiar \"zones\" por \"region\"."
+successMessage: |
+  ¡Perfecto! El provider está configurado correctamente.
+
+  Lo que aprendiste:
+  - terraform init necesita saber de dónde descargar los providers → required_providers
+  - El provider de AWS usa "region", no "zones" — las AZ se manejan a nivel recurso
+  - Sin required_providers, Terraform no puede resolver dependencias
+
+i18n:
+  en:
+    title: "The broken provider"
+    briefing: "This code has a misconfigured AWS provider. terraform init will fail. Find and fix the error."
+    hints:
+      - "Look at the provider attribute name: is \"zones\" a valid AWS attribute?"
+      - "Terraform needs a terraform { required_providers { } } block to know where to download providers."
+      - "The solution needs: 1) terraform block with required_providers for aws with source \"hashicorp/aws\", 2) change \"zones\" to \"region\"."
+    successMessage: |
+      Perfect! The provider is correctly configured.
+
+      What you learned:
+      - terraform init needs to know where to download providers → required_providers
+      - The AWS provider uses "region", not "zones" — AZs are configured at the resource level
+      - Without required_providers, Terraform can't resolve dependencies
+
+validations:
+  - type: syntax
+    errorMessage: "El bloque terraform con required_providers es necesario."
+    check:
+      contains: "required_providers"
+    failMessage: |
+      Error: Failed to query available provider packages
+
+      Falta el bloque terraform { required_providers { ... } }. Sin esto, Terraform no sabe de dónde descargar el provider de AWS.
+
+  - type: semantic
+    errorMessage: "El atributo \"zones\" no existe en el provider de AWS."
+    check:
+      not_match: "zones\\s*="
+    failMessage: |
+      Error: Unsupported argument "zones"
+
+      El provider de AWS no tiene un atributo "zones". El atributo correcto es "region". Las zonas de disponibilidad (como us-east-1a, us-east-1b) se configuran a nivel de recurso, no del provider.
+
+  - type: semantic
+    errorMessage: "El atributo \"region\" es obligatorio en el provider de AWS."
+    check:
+      match: "region\\s*="
+    failMessage: |
+      Error: Missing required argument "region"
+
+      El provider de AWS necesita saber en qué región operar. Añade region = "us-east-1" (o la región que prefieras).
+
+  - type: intention
+    errorMessage: "El bloque required_providers debe especificar la source del provider."
+    check:
+      any:
+        - not_contains: "required_providers"
+        - contains: "hashicorp/aws"
+    failMessage: |
+      Error: Invalid provider source
+
+      Dentro de required_providers, necesitas especificar source = "hashicorp/aws" para que Terraform sepa exactamente qué provider descargar del registry.
+
+terminalCommands:
+  "terraform init":
+    - when:
+        not_contains: "required_providers"
+      output: |
+        Initializing the backend...
+
+        Initializing provider plugins...
+
+        ╷
+        │ Error: Failed to query available provider packages
+        │
+        │ Could not retrieve the list of available versions for provider
+        │ hashicorp/aws: provider registry registry.terraform.io does not have a
+        │ provider named registry.terraform.io/hashicorp/aws
+        │
+        │ A terraform block with a required_providers block is required.
+        ╵
+      exitCode: 1
+    - output: |
+        Initializing the backend...
+
+        Initializing provider plugins...
+        - Finding hashicorp/aws versions matching ">= 5.0"...
+        - Installing hashicorp/aws v5.31.0...
+        - Installed hashicorp/aws v5.31.0 (signed by HashiCorp)
+
+        Terraform has been successfully initialized!
+      exitCode: 0
+
+  "terraform plan":
+    - when:
+        not_contains: "required_providers"
+      output: |
+        ╷
+        │ Error: Inconsistent dependency lock file
+        │
+        │ provider registry.terraform.io/hashicorp/aws: required by this
+        │ configuration but no version is selected
+        │
+        │ Run "terraform init" first.
+        ╵
+      exitCode: 1
+    - when:
+        match: "zones\\s*="
+      output: |
+        ╷
+        │ Error: Unsupported argument
+        │
+        │   on main.tf line 7, in provider "aws":
+        │    7:   zones  = "us-east-1"
+        │
+        │ An argument named "zones" is not expected here. Did you mean "region"?
+        ╵
+      exitCode: 1
+    - when:
+        not_match: "region\\s*="
+      output: |
+        ╷
+        │ Error: Missing required argument
+        │
+        │   on main.tf line 6, in provider "aws":
+        │    6: provider "aws" {
+        │
+        │ The argument "region" is required, but no definition was found.
+        ╵
+      exitCode: 1
+    - output: |
+        Terraform used the selected providers to generate the following execution
+        plan. Resource actions are indicated with the following symbols:
+          + create
+
+        Terraform will perform the following actions:
+
+          # aws_instance.web will be created
+          + resource "aws_instance" "web" {
+              + ami                          = "ami-0c55b159cbfafe1f0"
+              + instance_type                = "t2.micro"
+              + id                           = (known after apply)
+              + arn                          = (known after apply)
+              + availability_zone            = (known after apply)
+              + public_ip                    = (known after apply)
+            }
+
+        Plan: 1 to add, 0 to change, 0 to destroy.
+      exitCode: 0
+
+  "terraform apply":
+    - output: "Error: This is a simulated environment. Use \"terraform plan\" to validate your configuration."
+      exitCode: 1

@@ -1,0 +1,154 @@
+id: k8s-13-no-resources
+title: "Pod sin limites de recursos"
+briefing: "Este Pod no tiene limites de CPU ni memoria. Sin limites, un container puede consumir todos los recursos del nodo. Anade los limites."
+
+prerequisites: []
+
+initialCode: |
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: api-server
+    labels:
+      app: api
+  spec:
+    containers:
+      - name: api
+        image: node:20-alpine
+        ports:
+          - containerPort: 3000
+
+hints:
+  - "Los limites de recursos se definen dentro de resources: en cada container."
+  - "Necesitas un bloque resources: con requests: (minimo garantizado) y limits: (maximo permitido)."
+  - "Anade resources: { requests: { cpu: \"100m\", memory: \"128Mi\" }, limits: { cpu: \"500m\", memory: \"256Mi\" } } al container."
+
+successMessage: |
+  Excelente! El Pod ahora tiene limites de recursos definidos.
+
+  Lo que aprendiste:
+  - requests define el minimo de recursos que Kubernetes garantiza al container
+  - limits define el maximo que puede consumir antes de ser throttled (CPU) o killed (memoria)
+  - Sin limits, un container puede hacer OOMKill a otros Pods del nodo
+  - Es buena practica definir siempre requests y limits en produccion
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser valido."
+    check:
+      yaml_valid: true
+    failMessage: |
+      Error: YAML parse error
+
+      Revisa la indentacion. En YAML, la indentacion define la estructura. Cada nivel usa 2 espacios (no tabs).
+
+  - type: semantic
+    errorMessage: "El container debe tener un bloque resources."
+    check:
+      yaml_has: "spec.containers.0.resources"
+    failMessage: |
+      Error: container "api" does not have resource requirements
+
+      Sin resources, el container no tiene garantias de CPU ni memoria. Anade un bloque resources: dentro del container con requests y limits.
+
+  - type: semantic
+    errorMessage: "Debe definir requests de CPU y memoria."
+    check:
+      all:
+        - yaml_has: "spec.containers.0.resources.requests.cpu"
+        - yaml_has: "spec.containers.0.resources.requests.memory"
+    failMessage: |
+      Error: missing resource requests
+
+      requests define el minimo garantizado. Sin ellos, el scheduler no sabe cuantos recursos necesita tu Pod. Anade:
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+
+  - type: intention
+    errorMessage: "Debe definir limits de CPU y memoria."
+    check:
+      all:
+        - yaml_has: "spec.containers.0.resources.limits.cpu"
+        - yaml_has: "spec.containers.0.resources.limits.memory"
+    failMessage: |
+      Error: missing resource limits
+
+      limits define el maximo que puede consumir. Sin ellos, un container puede usar toda la CPU y memoria del nodo. Anade:
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        not: { yaml_valid: true }
+      output: 'error: error validating "pod.yaml": error validating data: invalid YAML'
+      exitCode: 1
+
+    - when:
+        not: { yaml_has: "spec.containers.0.resources" }
+      output: |
+        Warning: pod/api-server created (but without resource limits)
+
+        Best practice requires resource requests and limits on all containers.
+        Without limits, this container could consume all node resources.
+      exitCode: 0
+
+    - output: "pod/api-server created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        not: { yaml_valid: true }
+      output: "No resources found in default namespace."
+      exitCode: 0
+
+    - output: |
+        NAME         READY   STATUS    RESTARTS   AGE
+        api-server   1/1     Running   0          5s
+      exitCode: 0
+
+  "kubectl describe pod api-server":
+    - when:
+        yaml_has: "spec.containers.0.resources.limits"
+      output: |
+        Name:         api-server
+        Namespace:    default
+        Status:       Running
+        Containers:
+          api:
+            Image:          node:20-alpine
+            Port:           3000/TCP
+            Limits:
+              cpu:     500m
+              memory:  256Mi
+            Requests:
+              cpu:     100m
+              memory:  128Mi
+            State:          Running
+        Events:
+          Type    Reason     Age   From               Message
+          Normal  Scheduled  10s   default-scheduler  Successfully assigned
+          Normal  Pulled     9s    kubelet            Container image already present
+          Normal  Created    9s    kubelet            Created container api
+          Normal  Started    8s    kubelet            Started container api
+      exitCode: 0
+
+    - output: |
+        Name:         api-server
+        Namespace:    default
+        Status:       Running
+        Containers:
+          api:
+            Image:          node:20-alpine
+            Port:           3000/TCP
+            Limits:         <none>
+            Requests:       <none>
+            State:          Running
+        Events:
+          Type     Reason     Age   From               Message
+          Warning  NoLimits   10s   kubelet            Container has no resource limits
+      exitCode: 0

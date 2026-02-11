@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { exerciseId, command, code } = body;
+  const { exerciseId, command, code, lang } = body;
 
   if (!exerciseId || command === undefined || !code) {
     return NextResponse.json(
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = executeCommand(exerciseId, command, code);
+  const result = executeCommand(exerciseId, command, code, lang || "es");
 
   return NextResponse.json(result);
 }

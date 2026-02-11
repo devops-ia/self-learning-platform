@@ -1,0 +1,290 @@
+id: "k8s-02-crashloop-debug"
+title: "CrashLoopBackOff"
+briefing: "El Pod arranca pero muere inmediatamente. kubectl logs te va a decir por qué."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: web-app
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: web-app
+    template:
+      metadata:
+        labels:
+          app: web-app
+      spec:
+        containers:
+          - name: web
+            image: nginx:1.25
+            command: ["/bin/start-server"]
+            ports:
+              - containerPort: 80
+            livenessProbe:
+              httpGet:
+                path: /healthz
+                port: 8080
+              initialDelaySeconds: 5
+              periodSeconds: 10
+
+hints:
+  - "Revisa los logs: ¿qué dice sobre \"/bin/start-server\"? ¿Existe ese binario en la imagen nginx?"
+  - "Si nginx ya sabe cómo arrancar, ¿necesitas un command custom? Además, revisa que el liveness probe apunte al puerto correcto."
+  - "Solución: 1) Elimina el campo \"command\" (nginx arranca solo), 2) Cambia el puerto del liveness probe de 8080 a 80."
+successMessage: |
+  ¡Muy bien! El Deployment está sano y el Pod no va a crashear.
+
+  Lo que aprendiste:
+  - CrashLoopBackOff generalmente significa que el container muere al arrancar → revisa los logs
+  - Exit code 127 = "command not found" — la imagen no tiene ese binario
+  - Las imágenes oficiales tienen entrypoints sensatos — no los sobreescribas sin razón
+  - El liveness probe debe apuntar al mismo puerto donde el container escucha
+  - Si el probe falla, Kubernetes reinicia el container → loop infinito
+
+i18n:
+  en:
+    title: "CrashLoopBackOff"
+    briefing: "The Pod starts but dies immediately. kubectl logs will tell you why."
+    hints:
+      - "Check the logs: what does it say about \"/bin/start-server\"? Does that binary exist in the nginx image?"
+      - "If nginx already knows how to start, do you need a custom command? Also, check that the liveness probe points to the correct port."
+      - "Solution: 1) Remove the \"command\" field (nginx starts on its own), 2) Change the liveness probe port from 8080 to 80."
+    successMessage: |
+      Well done! The Deployment is healthy and the Pod won't crash.
+
+      What you learned:
+      - CrashLoopBackOff usually means the container dies on startup → check the logs
+      - Exit code 127 = "command not found" — the image doesn't have that binary
+      - Official images have sensible entrypoints — don't override them without reason
+      - The liveness probe must point to the same port where the container listens
+      - If the probe fails, Kubernetes restarts the container → infinite loop
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "El comando del container no existe en la imagen nginx."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const spec = _get(parsed, 'spec.template.spec');
+          const containers = spec && spec.containers;
+          if (!Array.isArray(containers)) return { passed: true };
+          const container = containers[0];
+          if (!container || !container.command) return { passed: true };
+          const cmd = container.command;
+          const hasBadCommand = Array.isArray(cmd) && cmd.some(function(c) { return String(c).includes('start-server'); });
+          if (hasBadCommand) {
+            return {
+              passed: false,
+              errorMessage: "Error: container exited with code 127 — \"/bin/start-server: not found\"\n\nLa imagen nginx:1.25 no tiene un binario llamado /bin/start-server. El entrypoint por defecto de nginx ya arranca el servidor. Puedes:\n1. Eliminar el campo \"command\" para usar el entrypoint por defecto de la imagen\n2. O usar un comando que exista, como [\"nginx\", \"-g\", \"daemon off;\"]"
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El comando del container no existe."
+
+  - type: intention
+    errorMessage: "El puerto del liveness probe no coincide con el del container."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const spec = _get(parsed, 'spec.template.spec');
+          const containers = spec && spec.containers;
+          if (!Array.isArray(containers)) return { passed: true };
+          const container = containers[0];
+          if (!container) return { passed: true };
+          const probe = container.livenessProbe;
+          const httpGet = probe && probe.httpGet;
+          const probePort = httpGet && httpGet.port;
+          const ports = container.ports;
+          const containerPort = Array.isArray(ports) && ports[0] && ports[0].containerPort;
+          if (probePort && containerPort && probePort !== containerPort) {
+            return {
+              passed: false,
+              errorMessage: "Warning: Liveness probe apunta al puerto " + probePort + ", pero el container escucha en " + containerPort + "\n\nEl liveness probe hace un HTTP GET al puerto " + probePort + ", pero nginx escucha en el puerto " + containerPort + ". Kubernetes va a pensar que el container está muerto y lo va a reiniciar infinitamente. Cambia el puerto del probe para que coincida con el del container."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El puerto del liveness probe no coincide con el del container."
+
+terminalCommands:
+  "kubectl apply -f deployment.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: "error: error parsing deployment.yaml: error converting YAML to JSON"
+      exitCode: 1
+    - output: "deployment.apps/web-app created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            if (!p) return false;
+            const spec = _get(p, 'spec.template.spec');
+            const containers = spec && spec.containers;
+            if (!Array.isArray(containers)) return false;
+            const c = containers[0];
+            if (!c || !c.command) return false;
+            const cmd = c.command;
+            return Array.isArray(cmd) && cmd.some(function(x) { return String(x).includes('start-server'); });
+          } catch { return false; }
+      output: |
+        NAME                       READY   STATUS             RESTARTS      AGE
+        web-app-7d4f8b6c9-x2k4p   0/1     CrashLoopBackOff   4 (12s ago)   2m
+      exitCode: 0
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            if (!p) return false;
+            const spec = _get(p, 'spec.template.spec');
+            const containers = spec && spec.containers;
+            if (!Array.isArray(containers)) return false;
+            const c = containers[0];
+            if (!c) return false;
+            const probe = c.livenessProbe;
+            const httpGet = probe && probe.httpGet;
+            const probePort = httpGet && httpGet.port;
+            const ports = c.ports;
+            const containerPort = Array.isArray(ports) && ports[0] && ports[0].containerPort;
+            return probePort && containerPort && probePort !== containerPort;
+          } catch { return false; }
+      output: |
+        NAME                       READY   STATUS    RESTARTS      AGE
+        web-app-7d4f8b6c9-x2k4p   0/1     Running   3 (5s ago)    1m
+      exitCode: 0
+    - output: |
+        NAME                       READY   STATUS    RESTARTS   AGE
+        web-app-7d4f8b6c9-x2k4p   1/1     Running   0          30s
+      exitCode: 0
+
+  "kubectl logs web-app-7d4f8b6c9-x2k4p":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const spec = _get(p, 'spec.template.spec');
+            const c = spec && spec.containers && spec.containers[0];
+            if (!c || !c.command) return false;
+            return Array.isArray(c.command) && c.command.some(function(x) { return String(x).includes('start-server'); });
+          } catch { return false; }
+      output: |
+        /docker-entrypoint.sh: error: /bin/start-server: No such file or directory
+        /docker-entrypoint.sh: error: can not execute: Is a directory or not found
+      exitCode: 1
+    - output: |
+        /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+        /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+        /docker-entrypoint.sh: Configuration complete; ready for start up
+        2025/01/01 00:00:00 [notice] 1#1: using the "epoll" event method
+        2025/01/01 00:00:00 [notice] 1#1: nginx/1.25.0
+        2025/01/01 00:00:00 [notice] 1#1: start worker processes
+      exitCode: 0
+
+  "kubectl describe pod web-app-7d4f8b6c9-x2k4p":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const spec = _get(p, 'spec.template.spec');
+            const c = spec && spec.containers && spec.containers[0];
+            return c && c.command && Array.isArray(c.command) && c.command.some(function(x) { return String(x).includes('start-server'); });
+          } catch { return false; }
+      output: |
+        Name:         web-app-7d4f8b6c9-x2k4p
+        Namespace:    default
+        Status:       Running
+        Containers:
+          web:
+            Image:         nginx:1.25
+            Command:       ["/bin/start-server"]
+            Port:          80
+            State:         Waiting
+              Reason:      CrashLoopBackOff
+            Last State:    Terminated
+              Reason:      Error
+              Exit Code:   127
+              Message:     /bin/start-server: not found
+            Ready:         False
+            Restart Count: 4
+        Events:
+          Type     Reason     Age                From               Message
+          ----     ------     ----               ----               -------
+          Normal   Scheduled  2m                 default-scheduler  Successfully assigned
+          Normal   Pulled     90s (x4 over 2m)   kubelet            Container image "nginx:1.25" already present
+          Normal   Created    90s (x4 over 2m)   kubelet            Created container web
+          Warning  BackOff    10s (x8 over 90s)  kubelet            Back-off restarting failed container
+      exitCode: 0
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const spec = _get(p, 'spec.template.spec');
+            const c = spec && spec.containers && spec.containers[0];
+            if (!c) return false;
+            const probe = c.livenessProbe;
+            const httpGet = probe && probe.httpGet;
+            const probePort = httpGet && httpGet.port;
+            const ports = c.ports;
+            const containerPort = Array.isArray(ports) && ports[0] && ports[0].containerPort;
+            return probePort && containerPort && probePort !== containerPort;
+          } catch { return false; }
+      output: |
+        Name:         web-app-7d4f8b6c9-x2k4p
+        Namespace:    default
+        Status:       Running
+        Containers:
+          web:
+            Image:          nginx:1.25
+            Port:           80
+            State:          Running
+            Ready:          False
+            Liveness:       http-get http://:8080/healthz delay=5s timeout=1s period=10s
+        Events:
+          Type     Reason     Age              From     Message
+          ----     ------     ----             ----     -------
+          Normal   Started    1m               kubelet  Started container web
+          Warning  Unhealthy  5s (x3 over 25s) kubelet  Liveness probe failed: Get "http://10.244.0.5:8080/healthz": dial tcp 10.244.0.5:8080: connect: connection refused
+      exitCode: 0
+    - output: |
+        Name:         web-app-7d4f8b6c9-x2k4p
+        Namespace:    default
+        Status:       Running
+        Containers:
+          web:
+            Image:          nginx:1.25
+            Port:           80
+            State:          Running
+            Ready:          True
+            Liveness:       http-get http://:80/healthz delay=5s timeout=1s period=10s
+        Events:
+          Type    Reason   Age   From     Message
+          ----    ------   ----  ----     -------
+          Normal  Started  30s   kubelet  Started container web
+      exitCode: 0

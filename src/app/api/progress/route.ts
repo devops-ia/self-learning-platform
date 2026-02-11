@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, progress } from "@/lib/db/schema";
 import { eq, and, like } from "drizzle-orm";
-import { getModuleExercises } from "@/lib/exercises";
+import { getModuleExercises, getModuleFromDB } from "@/lib/exercises";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("userId");
-  const moduleName = searchParams.get("module") as "terraform" | "kubernetes" | null;
+  const moduleName = searchParams.get("module");
 
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       .run();
   }
 
-  const prefix = moduleName === "terraform" ? "tf-" : moduleName === "kubernetes" ? "k8s-" : "";
+  const moduleConf = moduleName ? getModuleFromDB(moduleName) : null;
+  const prefix = moduleConf ? `${moduleConf.prefix}-` : "";
 
   const rows = prefix
     ? db

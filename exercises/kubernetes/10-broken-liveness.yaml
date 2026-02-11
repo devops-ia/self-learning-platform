@@ -1,0 +1,192 @@
+id: "k8s-10-broken-liveness"
+title: "LivenessProbe inválida"
+briefing: "El puerto del liveness probe no es válido. El Pod no puede pasar la validación. Corrige el valor del puerto."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: health-app
+    labels:
+      app: health
+  spec:
+    containers:
+      - name: app
+        image: nginx:1.25
+        ports:
+          - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: eighty
+          initialDelaySeconds: 5
+          periodSeconds: 10
+
+hints:
+  - "El error menciona un puerto inválido \"eighty\". Los puertos deben ser numéricos o nombres IANA válidos (como \"http\")."
+  - "El containerPort es 8080. El liveness probe debe apuntar al mismo puerto donde el container escucha."
+  - "Solución: cambia port: eighty por port: 8080 para que coincida con el containerPort del container."
+successMessage: |
+  ¡Perfecto! El liveness probe ahora apunta a un puerto válido.
+
+  Lo que aprendiste:
+  - Los puertos en livenessProbe.httpGet deben ser numéricos o nombres IANA válidos
+  - Nombres como "http" (80) o "https" (443) son válidos, pero strings arbitrarios no
+  - El puerto del probe debe coincidir con el puerto donde la aplicación escucha
+  - livenessProbe detecta si el container está vivo; si falla, Kubernetes lo reinicia
+  - También existen readinessProbe (para tráfico) y startupProbe (para arranque lento)
+
+i18n:
+  en:
+    title: "Invalid LivenessProbe"
+    briefing: "The liveness probe port is invalid. The Pod cannot pass validation. Fix the port value."
+    hints:
+      - "The error mentions an invalid port \"eighty\". Ports must be numeric or valid IANA names (like \"http\")."
+      - "The containerPort is 8080. The liveness probe must point to the same port where the container listens."
+      - "Solution: change port: eighty to port: 8080 to match the container's containerPort."
+    successMessage: |
+      Perfect! The liveness probe now points to a valid port.
+
+      What you learned:
+      - Ports in livenessProbe.httpGet must be numeric or valid IANA names
+      - Names like "http" (80) or "https" (443) are valid, but arbitrary strings are not
+      - The probe port must match the port where the application listens
+      - livenessProbe detects if the container is alive; if it fails, Kubernetes restarts it
+      - There are also readinessProbe (for traffic) and startupProbe (for slow startup)
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "El container debe tener un livenessProbe."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const containers = _get(parsed, 'spec.containers');
+          if (!Array.isArray(containers) || containers.length === 0) return { passed: true };
+          const container = containers[0];
+          if (!container.livenessProbe) {
+            return {
+              passed: false,
+              errorMessage: "Warning: el container no tiene livenessProbe definido\n\nUna livenessProbe permite a Kubernetes detectar si el container está funcionando. Sin ella, Kubernetes solo sabe si el proceso principal ha terminado."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El container debe tener un livenessProbe."
+
+  - type: intention
+    errorMessage: "El puerto del liveness probe debe ser numérico."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const container = _get(parsed, 'spec.containers.0');
+          if (!container) return { passed: true };
+          const probe = container.livenessProbe;
+          if (!probe) return { passed: true };
+          const httpGet = probe.httpGet;
+          if (!httpGet) return { passed: true };
+          const port = httpGet.port;
+          if (port === null || port === undefined) return { passed: true };
+          const num = Number(port);
+          const isNumeric = !isNaN(num) && num > 0 && num <= 65535;
+          if (!isNumeric) {
+            return {
+              passed: false,
+              errorMessage: "Error: puerto del liveness probe \"" + String(port) + "\" no es válido\n\nEl puerto del httpGet en el liveness probe debe ser un número entero (1-65535) o un nombre de puerto IANA válido.\nEl valor \"" + String(port) + "\" no es ni un número ni un nombre de puerto registrado.\nCambia el puerto a un valor numérico que coincida con el containerPort."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El puerto del liveness probe debe ser numérico."
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: |
+        error: error validating "pod.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const port = _get(p, 'spec.containers.0.livenessProbe.httpGet.port');
+            if (port === null || port === undefined) return false;
+            const num = Number(port);
+            return isNaN(num) || num <= 0 || num > 65535;
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "pod.yaml": Pod "health-app" is invalid:
+        spec.containers[0].livenessProbe.httpGet.port: Invalid value: "eighty": must be a number or a valid port name (IANA_SVC_NAME)
+      exitCode: 1
+    - output: "pod/health-app created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const port = _get(p, 'spec.containers.0.livenessProbe.httpGet.port');
+            if (port === null || port === undefined) return false;
+            const num = Number(port);
+            return !isNaN(num) && num > 0 && num <= 65535;
+          } catch { return false; }
+      output: |
+        NAME          READY   STATUS    RESTARTS   AGE
+        health-app   1/1     Running   0          5s
+      exitCode: 0
+    - output: "No resources found in default namespace."
+      exitCode: 0
+
+  "kubectl describe pod health-app":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const port = _get(p, 'spec.containers.0.livenessProbe.httpGet.port');
+            if (port === null || port === undefined) return false;
+            const num = Number(port);
+            return !isNaN(num) && num > 0 && num <= 65535;
+          } catch { return false; }
+      output: |
+        Name:         health-app
+        Namespace:    default
+        Status:       Running
+        Containers:
+          app:
+            Image:          nginx:1.25
+            Port:           8080/TCP
+            Liveness:       http-get http://:8080/healthz delay=5s timeout=1s period=10s
+            State:          Running
+            Ready:          True
+        Events:
+          Type    Reason     Age   From               Message
+          ----    ------     ----  ----               -------
+          Normal  Scheduled  10s   default-scheduler  Successfully assigned default/health-app
+          Normal  Pulled     9s    kubelet            Container image already present
+          Normal  Created    9s    kubelet            Created container app
+          Normal  Started    8s    kubelet            Started container app
+      exitCode: 0
+    - output: "Error from server (NotFound): pods \"health-app\" not found"
+      exitCode: 1

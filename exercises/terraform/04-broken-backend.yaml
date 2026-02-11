@@ -1,0 +1,114 @@
+id: "tf-04-broken-backend"
+title: "Backend S3 sin bucket"
+briefing: "El backend S3 necesita saber donde guardar el state. Falta un argumento obligatorio."
+prerequisites: []
+language: "hcl"
+initialCode: |
+  terraform {
+    required_providers {
+      aws = {
+        source  = "hashicorp/aws"
+        version = ">= 5.0"
+      }
+    }
+
+    backend "s3" {
+      key    = "terraform.tfstate"
+      region = "us-east-1"
+    }
+  }
+
+  provider "aws" {
+    region = "us-east-1"
+  }
+
+hints:
+  - "El error dice que falta un argumento obligatorio en el backend S3."
+  - "El backend S3 necesita tres cosas: bucket, key y region. Revisa cual falta."
+  - "Solucion: anade bucket = \"mi-bucket-terraform\" dentro del bloque backend \"s3\"."
+successMessage: |
+  Correcto! El backend S3 esta configurado.
+
+  Lo que aprendiste:
+  - El backend S3 necesita bucket, key y region como minimo
+  - Sin backend remoto, el state se queda en local y no se puede compartir
+  - terraform init es el comando que configura el backend
+
+i18n:
+  en:
+    title: "S3 backend without bucket"
+    briefing: "The S3 backend needs to know where to save the state. A required argument is missing."
+    hints:
+      - "The error says a required argument is missing in the S3 backend."
+      - "The S3 backend needs three things: bucket, key and region. Check which one is missing."
+      - "Solution: add bucket = \"my-terraform-bucket\" inside the backend \"s3\" block."
+    successMessage: |
+      Correct! The S3 backend is configured.
+
+      What you learned:
+      - The S3 backend needs bucket, key and region at minimum
+      - Without a remote backend, state stays local and cannot be shared
+      - terraform init is the command that configures the backend
+
+validations:
+  - type: syntax
+    errorMessage: "Debe haber un backend configurado."
+    check:
+      not_contains: "backend"
+    failMessage: |
+      Error: No hay backend configurado
+
+      Sin un backend, Terraform guarda el state en local. Necesitas un bloque backend dentro de terraform {}.
+
+  - type: semantic
+    errorMessage: "El backend S3 requiere el argumento bucket."
+    check:
+      not_match: 'bucket\s*='
+    failMessage: |
+      Error: Missing required argument "bucket"
+
+      El backend S3 necesita saber en que bucket guardar el fichero de state. Anade bucket = "mi-bucket-terraform" dentro del bloque backend.
+
+terminalCommands:
+  "terraform init":
+    - when:
+        not_contains: "backend"
+      output: |
+        Initializing the backend...
+
+        Terraform has been successfully initialized!
+        (Using local backend)
+      exitCode: 0
+    - when:
+        not_match: 'bucket\s*='
+      output: |
+        Initializing the backend...
+
+        ╷
+        │ Error: Missing required argument
+        │
+        │   on main.tf line 3, in terraform:
+        │    3:   backend "s3" {
+        │
+        │ The argument "bucket" is required, but no definition was found.
+        ╵
+      exitCode: 1
+    - output: |
+        Initializing the backend...
+
+        Successfully configured the backend "s3"! Terraform will automatically
+        use this backend unless the backend configuration changes.
+
+        Terraform has been successfully initialized!
+      exitCode: 0
+
+  "terraform plan":
+    - when:
+        not_match: 'bucket\s*='
+      output: |
+        ╷
+        │ Error: Backend initialization required, please run "terraform init"
+        ╵
+      exitCode: 1
+    - output: "No changes. Your infrastructure matches the configuration."
+      exitCode: 0

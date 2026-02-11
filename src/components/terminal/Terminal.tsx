@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import "@xterm/xterm/css/xterm.css";
+import { useT } from "@/lib/i18n/context";
 
 interface TerminalProps {
   exerciseId: string;
@@ -9,6 +10,11 @@ interface TerminalProps {
 }
 
 export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
+  const { lang, t } = useT();
+  const langRef = useRef(lang);
+  const tRef = useRef(t);
+  langRef.current = lang;
+  tRef.current = t;
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<import("@xterm/xterm").Terminal | null>(null);
   const inputBuffer = useRef("");
@@ -28,6 +34,7 @@ export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
             exerciseId,
             command,
             code: codeRef.current,
+            lang: langRef.current,
           }),
         });
         const data = await res.json();
@@ -38,7 +45,7 @@ export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
         }
       } catch (_e) {
         xtermRef.current?.writeln(
-          "\x1b[31mError: no se pudo ejecutar el comando\x1b[0m"
+          `\x1b[31m${tRef.current.terminal.executionError}\x1b[0m`
         );
       }
       writePrompt();
@@ -93,8 +100,8 @@ export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
 
       xtermRef.current = term;
 
-      term.writeln("\x1b[1;36mDevOps Lab Terminal\x1b[0m");
-      term.writeln('Escribe "help" para ver los comandos disponibles.');
+      term.writeln(`\x1b[1;36m${t.terminal.title}\x1b[0m`);
+      term.writeln(t.terminal.helpPrompt);
       term.write("\r\n\x1b[32m$ \x1b[0m");
 
       // Focus the terminal so keyboard input works

@@ -1,0 +1,159 @@
+id: "k8s-05-service-wrong-port"
+title: "Service sin targetPort"
+briefing: "El Service existe, pero no enruta tráfico al container. Falta un campo importante en la definición del puerto."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: web
+  spec:
+    selector:
+      app: frontend
+    ports:
+      - protocol: TCP
+        port: 8080
+
+hints:
+  - "Ejecuta kubectl describe svc web y mira el campo Endpoints. Si dice <none>, el tráfico no está llegando al Pod."
+  - "Un Service tiene port (el puerto en el que el Service escucha) y targetPort (el puerto del container). Si falta targetPort, se usa el mismo valor que port."
+  - "Solución: añade targetPort: 80 debajo de port: 8080, para que el Service redirija del puerto 8080 al 80 del container."
+successMessage: |
+  ¡Bien hecho! El Service ahora enruta tráfico correctamente al container.
+
+  Lo que aprendiste:
+  - port es el puerto donde el Service escucha dentro del cluster
+  - targetPort es el puerto del container al que se reenvía el tráfico
+  - Si omites targetPort, Kubernetes asume que es igual a port
+  - Es buena práctica definir siempre targetPort de forma explícita
+  - kubectl describe svc muestra Endpoints para verificar la conectividad
+
+i18n:
+  en:
+    title: "Service without targetPort"
+    briefing: "The Service exists, but doesn't route traffic to the container. An important field is missing in the port definition."
+    hints:
+      - "Run kubectl describe svc web and look at the Endpoints field. If it says <none>, traffic isn't reaching the Pod."
+      - "A Service has port (the port the Service listens on) and targetPort (the container port). If targetPort is missing, it uses the same value as port."
+      - "Solution: add targetPort: 80 below port: 8080, so the Service redirects from port 8080 to the container's port 80."
+    successMessage: |
+      Well done! The Service now routes traffic correctly to the container.
+
+      What you learned:
+      - port is the port where the Service listens within the cluster
+      - targetPort is the container port to which traffic is forwarded
+      - If you omit targetPort, Kubernetes assumes it equals port
+      - It's good practice to always define targetPort explicitly
+      - kubectl describe svc shows Endpoints to verify connectivity
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "El Service necesita un targetPort explícito."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const ports = _get(parsed, 'spec.ports');
+          if (!Array.isArray(ports) || ports.length === 0) return { passed: true };
+          const port = ports[0];
+          if (!("targetPort" in port)) {
+            return {
+              passed: false,
+              errorMessage: "Warning: el Service no tiene targetPort definido\n\nSin targetPort, el Service envía el tráfico al mismo número que port. Si el container escucha en un puerto diferente, el tráfico no llegará. Es buena práctica definir siempre targetPort de forma explícita para evitar confusiones."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El Service necesita un targetPort explícito."
+
+  - type: intention
+    errorMessage: "El targetPort debe ser un puerto válido."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const ports = _get(parsed, 'spec.ports');
+          if (!Array.isArray(ports) || ports.length === 0) return { passed: true };
+          const port = ports[0];
+          if (!("targetPort" in port)) return { passed: true };
+          const targetPort = Number(port.targetPort);
+          if (isNaN(targetPort) || targetPort <= 0 || targetPort > 65535) {
+            return {
+              passed: false,
+              errorMessage: "Error: targetPort debe ser un número de puerto válido (1-65535)\n\nEl targetPort indica el puerto del container al que se envía el tráfico. Debe ser un número válido."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El targetPort debe ser un puerto válido."
+
+terminalCommands:
+  "kubectl apply -f service.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: |
+        error: error validating "service.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - output: "service/web created"
+      exitCode: 0
+
+  "kubectl get svc":
+    - output: |
+        NAME   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+        web    ClusterIP   10.96.145.23    <none>        8080/TCP    5s
+      exitCode: 0
+
+  "kubectl describe svc web":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const ports = _get(p, 'spec.ports');
+            if (!Array.isArray(ports) || ports.length === 0) return false;
+            return "targetPort" in ports[0];
+          } catch { return false; }
+      output: |
+        Name:              web
+        Namespace:         default
+        Labels:            <none>
+        Selector:          app=frontend
+        Type:              ClusterIP
+        IP:                10.96.145.23
+        Port:              <unset>  8080/TCP
+        TargetPort:        80/TCP
+        Endpoints:         10.244.0.5:80
+        Session Affinity:  None
+        Events:            <none>
+      exitCode: 0
+    - output: |
+        Name:              web
+        Namespace:         default
+        Labels:            <none>
+        Selector:          app=frontend
+        Type:              ClusterIP
+        IP:                10.96.145.23
+        Port:              <unset>  8080/TCP
+        TargetPort:        8080/TCP
+        Endpoints:         <none>
+        Session Affinity:  None
+        Events:            <none>
+      exitCode: 0

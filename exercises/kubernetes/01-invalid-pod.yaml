@@ -1,0 +1,223 @@
+id: "k8s-01-invalid-pod"
+title: "Pod YAML inválido"
+briefing: "Este Pod no va a pasar la validación del API server. El YAML tiene errores estructurales. Corrígelo."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: nginx-pod
+  spec:
+    container:
+      name: nginx
+      image: nginx:1.25
+      ports:
+      - containerPort: 80
+hints:
+  - "¿\"container\" o \"containers\"? Kubernetes usa el plural porque un Pod puede tener varios containers."
+  - "En YAML, una lista se define con \"-\" al inicio de cada elemento. containers: debe tener items con \"- name: ...\"."
+  - "Solución: cambia \"container:\" por \"containers:\" y haz que sea una lista con \"- name: nginx\"."
+successMessage: |
+  ¡Excelente! El Pod YAML es válido y el API server lo aceptaría.
+
+  Lo que aprendiste:
+  - "containers" es plural y es un array — un Pod puede tener múltiples containers
+  - Cada container necesita "name" e "image" como mínimo
+  - La indentación en YAML es crucial — define la estructura del documento
+  - kubectl apply valida contra el schema de la API antes de crear el recurso
+
+i18n:
+  en:
+    title: "Invalid Pod YAML"
+    briefing: "This Pod won't pass the API server validation. The YAML has structural errors. Fix it."
+    hints:
+      - "\"container\" or \"containers\"? Kubernetes uses the plural because a Pod can have multiple containers."
+      - "In YAML, a list is defined with \"-\" at the start of each element. containers: should have items with \"- name: ...\"."
+      - "Solution: change \"container:\" to \"containers:\" and make it a list with \"- name: nginx\"."
+    successMessage: |
+      Excellent! The Pod YAML is valid and the API server would accept it.
+
+      What you learned:
+      - "containers" is plural and is an array — a Pod can have multiple containers
+      - Each container needs "name" and "image" at minimum
+      - Indentation in YAML is crucial — it defines the document structure
+      - kubectl apply validates against the API schema before creating the resource
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido") + "\n\nRevisa la indentación. En YAML, la indentación define la estructura. Cada nivel usa 2 espacios (no tabs)."
+          };
+        }
+    failMessage: "Error: YAML parse error. Revisa la indentación."
+
+  - type: semantic
+    errorMessage: "El campo correcto es \"containers\" (plural), no \"container\"."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const spec = parsed.spec;
+          if (spec && spec.container && !spec.containers) {
+            return {
+              passed: false,
+              errorMessage: "Error: unknown field \"spec.container\"\n\nEl API server de Kubernetes espera \"containers\" (plural), no \"container\". Es un error muy común. Un Pod puede tener múltiples containers (sidecar pattern), por eso el campo es una lista."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Error: unknown field \"spec.container\". Usa \"containers\" (plural)."
+
+  - type: semantic
+    errorMessage: "\"containers\" debe ser una lista (array)."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const spec = parsed.spec;
+          if (spec && spec.containers && !Array.isArray(spec.containers)) {
+            return {
+              passed: false,
+              errorMessage: "Error: cannot unmarshal object into field PodSpec.spec.containers of type []v1.Container\n\n\"containers\" debe ser un array YAML (cada elemento empieza con \"- \"). Ejemplo:\ncontainers:\n  - name: nginx\n    image: nginx:1.25"
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "\"containers\" debe ser un array YAML."
+
+  - type: intention
+    errorMessage: "Cada container debe tener name e image."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const spec = parsed.spec;
+          const containers = spec && spec.containers;
+          if (Array.isArray(containers)) {
+            for (const c of containers) {
+              if (!c.name) {
+                return {
+                  passed: false,
+                  errorMessage: "Error: missing required field \"name\" in container\n\nCada container en la lista necesita un campo \"name\" que lo identifique."
+                };
+              }
+              if (!c.image) {
+                return {
+                  passed: false,
+                  errorMessage: "Error: missing required field \"image\" in container \"" + c.name + "\"\n\nCada container necesita un \"image\" que especifique qué imagen de Docker usar."
+                };
+              }
+            }
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Cada container necesita name e image."
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: "error: error validating \"pod.yaml\": error validating data: invalid YAML"
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            return !p || !p.spec;
+          } catch { return false; }
+      output: "Error from server (BadRequest): error when creating \"pod.yaml\": Pod in version \"v1\" cannot be handled as a Pod: strict decoding error: missing required field \"spec\""
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const spec = p && p.spec;
+            return spec && spec.container && !spec.containers;
+          } catch { return false; }
+      output: |
+        Error from server (BadRequest): error when creating "pod.yaml": Pod in version "v1" cannot be handled as a Pod: strict decoding error: unknown field "spec.container"
+
+        Hint: the field name is "containers" (plural), and it must be a list (array).
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            return p && p.spec && p.spec.containers && !Array.isArray(p.spec.containers);
+          } catch { return false; }
+      output: |
+        Error from server (BadRequest): error when creating "pod.yaml": Pod in version "v1" cannot be handled as a Pod: json: cannot unmarshal object into Go struct field PodSpec.spec.containers of type []v1.Container
+
+        The "containers" field must be a YAML list (array), not a single object.
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            if (!p || !p.spec || !Array.isArray(p.spec.containers)) return false;
+            return p.spec.containers.some(function(c) { return !c.image || !c.name; });
+          } catch { return false; }
+      output: |
+        Error from server (BadRequest): error when creating "pod.yaml": Pod in version "v1" cannot be handled as a Pod: strict decoding error: missing required field in container
+      exitCode: 1
+    - output: "pod/nginx-pod created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const spec = p && p.spec;
+            return spec && Array.isArray(spec.containers) && spec.containers.every(function(c) { return c.name && c.image; });
+          } catch { return false; }
+      output: |
+        NAME        READY   STATUS    RESTARTS   AGE
+        nginx-pod   1/1     Running   0          5s
+      exitCode: 0
+    - output: "No resources found in default namespace."
+      exitCode: 0
+
+  "kubectl describe pod nginx-pod":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const spec = p && p.spec;
+            return spec && Array.isArray(spec.containers) && spec.containers.every(function(c) { return c.name && c.image; });
+          } catch { return false; }
+      output: |
+        Name:         nginx-pod
+        Namespace:    default
+        Status:       Running
+        IP:           10.244.0.5
+        Containers:
+          nginx:
+            Image:          nginx:1.25
+            Port:           80
+            State:          Running
+              Started:      Sun, 01 Jan 2025 00:00:00 +0000
+            Ready:          True
+        Events:
+          Type    Reason     Age   From               Message
+          ----    ------     ----  ----               -------
+          Normal  Scheduled  10s   default-scheduler  Successfully assigned default/nginx-pod
+          Normal  Pulled     9s    kubelet            Container image "nginx:1.25" already present
+          Normal  Created    9s    kubelet            Created container nginx
+          Normal  Started    8s    kubelet            Started container nginx
+      exitCode: 0
+    - output: "Error from server (NotFound): pods \"nginx-pod\" not found"
+      exitCode: 1

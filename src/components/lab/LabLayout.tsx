@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { CheckCircle, XCircle, Lightbulb, Loader2 } from "lucide-react";
+import { useT } from "@/lib/i18n/context";
 
 const CodeEditor = dynamic(() => import("@/components/editor/CodeEditor"), {
   ssr: false,
@@ -27,7 +28,7 @@ interface LabLayoutProps {
   title: string;
   briefing: string;
   initialCode: string;
-  language: "hcl" | "yaml";
+  language: string;
   onComplete: () => void;
 }
 
@@ -45,6 +46,7 @@ export default function LabLayout({
   language,
   onComplete,
 }: LabLayoutProps) {
+  const { lang, t } = useT();
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [failureCount, setFailureCount] = useState(0);
@@ -66,6 +68,7 @@ export default function LabLayout({
           code: codeRef.current,
           failureCount,
           userId,
+          lang,
         }),
       });
       const data = await res.json();
@@ -84,7 +87,7 @@ export default function LabLayout({
     } catch (_e) {
       setFeedback({
         passed: false,
-        summary: "Error al validar. Inténtalo de nuevo.",
+        summary: t.lab.validationError,
       });
     }
     setIsValidating(false);
@@ -106,10 +109,10 @@ export default function LabLayout({
           {isValidating ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Validando...
+              {t.lab.validating}
             </>
           ) : (
-            "Validar"
+            t.lab.validate
           )}
         </button>
       </div>

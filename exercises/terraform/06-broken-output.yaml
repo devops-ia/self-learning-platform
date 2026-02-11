@@ -1,0 +1,162 @@
+id: "tf-06-broken-output"
+title: "Output inválido"
+briefing: "El output referencia un atributo que no existe en el recurso. terraform plan falla con un error de atributo. Encuentra el nombre correcto."
+prerequisites: []
+language: "hcl"
+initialCode: |
+  terraform {
+    required_providers {
+      aws = {
+        source  = "hashicorp/aws"
+        version = ">= 5.0"
+      }
+    }
+  }
+
+  provider "aws" {
+    region = "us-east-1"
+  }
+
+  resource "aws_instance" "web" {
+    ami           = "ami-0c55b159cbfafe1f0"
+    instance_type = "t2.micro"
+  }
+
+  output "server_ip" {
+    value       = aws_instance.web.public_ip_address
+    description = "IP publica del servidor"
+  }
+
+hints:
+  - "El error dice \"Unsupported attribute\" y sugiere un nombre alternativo. Léelo con atención."
+  - "El atributo correcto de aws_instance para la IP pública es public_ip, no public_ip_address."
+  - "Solución: cambia aws_instance.web.public_ip_address por aws_instance.web.public_ip."
+successMessage: |
+  ¡Correcto! El output ahora referencia el atributo correcto.
+
+  Lo que aprendiste:
+  - Los nombres de atributos en Terraform son específicos de cada recurso
+  - Terraform sugiere nombres similares cuando te equivocas ("Did you mean...")
+  - Los outputs permiten exportar valores para usar en otros módulos o ver tras apply
+  - Siempre consulta la documentación del provider para los nombres exactos de atributos
+
+i18n:
+  en:
+    title: "Invalid output"
+    briefing: "The output references an attribute that doesn't exist on the resource. terraform plan fails with an attribute error. Find the correct name."
+    hints:
+      - "The error says \"Unsupported attribute\" and suggests an alternative name. Read it carefully."
+      - "The correct attribute of aws_instance for the public IP is public_ip, not public_ip_address."
+      - "Solution: change aws_instance.web.public_ip_address to aws_instance.web.public_ip."
+    successMessage: |
+      Correct! The output now references the correct attribute.
+
+      What you learned:
+      - Attribute names in Terraform are specific to each resource
+      - Terraform suggests similar names when you make a mistake ("Did you mean...")
+      - Outputs allow exporting values for use in other modules or viewing after apply
+      - Always consult the provider documentation for exact attribute names
+
+validations:
+  - type: syntax
+    errorMessage: "El output debe tener un valor definido."
+    check:
+      custom: |
+        (code) => {
+          if (code.includes("output") && !/value\s*=/.test(code)) {
+            return {
+              passed: false,
+              errorMessage: `Error: Output sin valor
+
+        Cada bloque output necesita un atributo value que defina qué se muestra.`
+            };
+          }
+          return { passed: true };
+        }
+    failMessage: |
+      Error: Output sin valor definido
+
+      Cada bloque output necesita un atributo value que especifique qué información
+      se debe mostrar al ejecutar terraform apply.
+
+      Añade value = dentro del bloque output y especifica la expresión que quieres
+      exportar, por ejemplo:
+        value = aws_instance.web.public_ip
+
+      Sin el atributo value, Terraform no sabe qué mostrar en el output.
+
+  - type: semantic
+    errorMessage: "El atributo public_ip_address no existe."
+    check:
+      contains: "public_ip_address"
+    failMessage: |
+      Error: Unsupported attribute "public_ip_address"
+
+      El recurso aws_instance no tiene un atributo llamado public_ip_address.
+      Revisa la documentación del recurso para encontrar el nombre correcto del atributo.
+
+  - type: intention
+    errorMessage: "El output debe usar el atributo correcto public_ip."
+    check:
+      not_match: 'public_ip(?!_address)'
+    failMessage: |
+      Error: El output no referencia el atributo correcto
+
+      El atributo de aws_instance para la IP pública se llama public_ip (no public_ip_address).
+      Usa aws_instance.web.public_ip en el valor del output.
+
+terminalCommands:
+  "terraform init":
+    - output: |
+        Initializing the backend...
+
+        Initializing provider plugins...
+        - Finding hashicorp/aws versions matching ">= 5.0"...
+        - Installing hashicorp/aws v5.31.0...
+        - Installed hashicorp/aws v5.31.0 (signed by HashiCorp)
+
+        Terraform has been successfully initialized!
+      exitCode: 0
+
+  "terraform plan":
+    - when:
+        contains: "public_ip_address"
+      output: |
+        ╷
+        │ Error: Unsupported attribute
+        │
+          on main.tf line 14, in output "server_ip":
+           14:   value = aws_instance.web.public_ip_address
+        │
+        │ This object has no argument, nested block, or exported attribute named
+        │ "public_ip_address". Did you mean "public_ip"?
+        ╵
+      exitCode: 1
+    - when:
+        match: 'public_ip(?!_address)'
+      output: |
+        Terraform used the selected providers to generate the following execution
+        plan. Resource actions are indicated with the following symbols:
+          + create
+
+        Terraform will perform the following actions:
+
+          # aws_instance.web will be created
+          + resource "aws_instance" "web" {
+              + ami           = "ami-0c55b159cbfafe1f0"
+              + instance_type = "t2.micro"
+              + public_ip     = (known after apply)
+            }
+
+        Changes to Outputs:
+          + server_ip = (known after apply)
+
+        Plan: 1 to add, 0 to change, 0 to destroy.
+      exitCode: 0
+    - output: |
+        ╷
+        │ Error: Missing output value
+        │
+        │ The output "server_ip" must have a value attribute.
+        ╵
+      exitCode: 1

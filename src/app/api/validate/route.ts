@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateExercise } from "@/lib/validators/engine";
-import { exercises as allExercises } from "@/lib/exercises";
 import { db } from "@/lib/db";
-import { users, submissions, progress } from "@/lib/db/schema";
+import { users, submissions, progress, exercises as exercisesTable } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { exerciseId, code, failureCount = 0, userId } = body;
+  const { exerciseId, code, failureCount = 0, userId, lang } = body;
 
   if (!exerciseId || !code) {
     return NextResponse.json(
@@ -18,7 +17,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = validateExercise(exerciseId, code, failureCount);
+  const result = validateExercise(exerciseId, code, failureCount, lang || "es");
 
   // Store submission if we have a userId
   if (userId) {
@@ -84,11 +83,14 @@ export async function POST(request: NextRequest) {
 }
 
 function unlockDependentExercises(userId: string, completedExerciseId: string) {
-  for (const [id, exercise] of Object.entries(allExercises)) {
-    const ex = exercise as { prerequisites: string[] };
-    if (ex.prerequisites.includes(completedExerciseId)) {
+  // Query all exercises from DB to find ones that depend on the completed exercise
+  const allExercises = db.select({ id: exercisesTable.id, prerequisites: exercisesTable.prerequisites }).from(exercisesTable).all();
+
+  for (const row of allExercises) {
+    const prereqs: string[] = JSON.parse(row.prerequisites);
+    if (prereqs.includes(completedExerciseId)) {
       // Check if all prerequisites are met
-      const allMet = ex.prerequisites.every((prereqId: string) => {
+      const allMet = prereqs.every((prereqId: string) => {
         const prereqProgress = db
           .select()
           .from(progress)
@@ -101,12 +103,12 @@ function unlockDependentExercises(userId: string, completedExerciseId: string) {
         const existing = db
           .select()
           .from(progress)
-          .where(and(eq(progress.userId, userId), eq(progress.exerciseId, id)))
+          .where(and(eq(progress.userId, userId), eq(progress.exerciseId, row.id)))
           .get();
 
         if (!existing) {
           db.insert(progress)
-            .values({ userId, exerciseId: id, status: "available" })
+            .values({ userId, exerciseId: row.id, status: "available" })
             .run();
         } else if (existing.status === "locked") {
           db.update(progress)

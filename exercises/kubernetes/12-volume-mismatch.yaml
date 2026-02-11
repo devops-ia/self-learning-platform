@@ -1,0 +1,203 @@
+id: "k8s-12-volume-mismatch"
+title: "Volume no definido"
+briefing: "El container monta un volumen que no está definido en la especificación del Pod. Añade la definición del volumen que falta."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: data-processor
+    labels:
+      app: processor
+  spec:
+    containers:
+      - name: processor
+        image: python:3.12-slim
+        command: ["python", "process.py"]
+        volumeMounts:
+          - name: data
+            mountPath: /app/data
+
+hints:
+  - "El error dice que el volumeMount \"data\" no tiene un volumen correspondiente. Necesitas definir un volumen con el mismo nombre en spec.volumes."
+  - "spec.volumes se define al mismo nivel que containers, dentro de spec. Cada volumen necesita un nombre y un tipo (por ejemplo emptyDir para un directorio temporal)."
+  - "Solución: añade esto al final del spec, al mismo nivel que containers:\n  volumes:\n    - name: data\n      emptyDir: {}"
+successMessage: |
+  ¡Excelente! El Pod ahora tiene el volumen correctamente definido.
+
+  Lo que aprendiste:
+  - Cada volumeMount debe tener un volumen correspondiente en spec.volumes
+  - El nombre del volumeMount y el volumen deben coincidir exactamente
+  - spec.volumes define el almacenamiento; volumeMounts define dónde se monta en el container
+  - emptyDir: {} crea un directorio temporal que vive mientras el Pod exista
+  - Un Pod puede tener múltiples volúmenes compartidos entre sus containers (sidecar pattern)
+  - Para persistencia más allá de la vida del Pod, usa PersistentVolumeClaim
+
+i18n:
+  en:
+    title: "Volume not defined"
+    briefing: "The container mounts a volume that is not defined in the Pod specification. Add the missing volume definition."
+    hints:
+      - "The error says that volumeMount \"data\" doesn't have a corresponding volume. You need to define a volume with the same name in spec.volumes."
+      - "spec.volumes is defined at the same level as containers, inside spec. Each volume needs a name and a type (for example emptyDir for a temporary directory)."
+      - "Solution: add this at the end of spec, at the same level as containers:\n  volumes:\n    - name: data\n      emptyDir: {}"
+    successMessage: |
+      Excellent! The Pod now has the volume correctly defined.
+
+      What you learned:
+      - Each volumeMount must have a corresponding volume in spec.volumes
+      - The volumeMount name and volume name must match exactly
+      - spec.volumes defines the storage; volumeMounts defines where it's mounted in the container
+      - emptyDir: {} creates a temporary directory that lives as long as the Pod exists
+      - A Pod can have multiple volumes shared between its containers (sidecar pattern)
+      - For persistence beyond the Pod's life, use PersistentVolumeClaim
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "Falta la sección spec.volumes en el Pod."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const containers = _get(parsed, 'spec.containers');
+          if (!Array.isArray(containers) || containers.length === 0) return { passed: true };
+          const container = containers[0];
+          const mounts = container.volumeMounts;
+          const volumes = _get(parsed, 'spec.volumes');
+          if (Array.isArray(mounts) && mounts.length > 0 && (!volumes || volumes.length === 0)) {
+            return {
+              passed: false,
+              errorMessage: "Error: spec.volumes no está definido\n\nEl container tiene volumeMounts pero el Pod no tiene ningún volumen definido en spec.volumes. Necesitas definir cada volumen que los containers montan."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Falta la sección spec.volumes."
+
+  - type: intention
+    errorMessage: "El nombre del volumen debe coincidir con el volumeMount."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const containers = _get(parsed, 'spec.containers');
+          if (!Array.isArray(containers) || containers.length === 0) return { passed: true };
+          const container = containers[0];
+          const mounts = container.volumeMounts;
+          if (!Array.isArray(mounts)) return { passed: true };
+          const volumes = _get(parsed, 'spec.volumes');
+          if (!Array.isArray(volumes)) return { passed: true };
+          const volumeNames = volumes.map(function(v) { return v.name; });
+          for (let i = 0; i < mounts.length; i++) {
+            const mountName = mounts[i].name;
+            if (volumeNames.indexOf(mountName) === -1) {
+              return {
+                passed: false,
+                errorMessage: "Error: volumeMount \"" + mountName + "\" no tiene un volumen correspondiente\n\nCada volumeMount en un container debe tener un volumen con el mismo nombre definido en spec.volumes. El nombre del volumeMount y el del volumen deben coincidir exactamente."
+              };
+            }
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El nombre del volumen debe coincidir con el volumeMount."
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: |
+        error: error validating "pod.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const mounts = _get(p, 'spec.containers.0.volumeMounts');
+            const volumes = _get(p, 'spec.volumes');
+            if (!Array.isArray(mounts) || mounts.length === 0) return false;
+            if (!Array.isArray(volumes)) return false;
+            const volumeNames = volumes.map(function(v) { return v.name; });
+            return mounts.some(function(m) { return volumeNames.indexOf(m.name) === -1; });
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "pod.yaml": Pod "data-processor" is invalid:
+        spec.containers[0].volumeMounts[0].name: Not found: "data"
+      exitCode: 1
+    - output: "pod/data-processor created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const mounts = _get(p, 'spec.containers.0.volumeMounts');
+            const volumes = _get(p, 'spec.volumes');
+            if (!Array.isArray(mounts) || mounts.length === 0) return false;
+            if (!Array.isArray(volumes)) return false;
+            const volumeNames = volumes.map(function(v) { return v.name; });
+            return mounts.every(function(m) { return volumeNames.indexOf(m.name) !== -1; });
+          } catch { return false; }
+      output: |
+        NAME              READY   STATUS    RESTARTS   AGE
+        data-processor   1/1     Running   0          5s
+      exitCode: 0
+    - output: "No resources found in default namespace."
+      exitCode: 0
+
+  "kubectl describe pod data-processor":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const mounts = _get(p, 'spec.containers.0.volumeMounts');
+            const volumes = _get(p, 'spec.volumes');
+            if (!Array.isArray(mounts) || mounts.length === 0) return false;
+            if (!Array.isArray(volumes)) return false;
+            const volumeNames = volumes.map(function(v) { return v.name; });
+            return mounts.every(function(m) { return volumeNames.indexOf(m.name) !== -1; });
+          } catch { return false; }
+      output: |
+        Name:         data-processor
+        Namespace:    default
+        Status:       Running
+        Containers:
+          processor:
+            Image:          python:3.12-slim
+            Port:           <none>
+            Mounts:
+              data:
+                Mount Path: /app/data
+                ReadOnly:   false
+        Volumes:
+          data:
+            Type:       EmptyDir
+        Events:
+          Type    Reason     Age   From               Message
+          ----    ------     ----  ----               -------
+          Normal  Scheduled  10s   default-scheduler  Successfully assigned default/data-processor
+          Normal  Pulled     9s    kubelet            Container image already present
+          Normal  Created    9s    kubelet            Created container processor
+          Normal  Started    8s    kubelet            Started container processor
+      exitCode: 0
+    - output: "Error from server (NotFound): pods \"data-processor\" not found"
+      exitCode: 1

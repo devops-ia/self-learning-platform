@@ -1,0 +1,186 @@
+id: "k8s-06-invalid-imagepullpolicy"
+title: "imagePullPolicy inválido"
+briefing: "El valor de imagePullPolicy no es válido. El API server lo rechaza. Corrige el valor para que el Pod pueda crearse."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: nginx-app
+    labels:
+      app: nginx
+  spec:
+    containers:
+      - name: nginx
+        image: nginx:1.25
+        imagePullPolicy: Sometimes
+        ports:
+          - containerPort: 80
+
+hints:
+  - "El error dice que \"Sometimes\" no es un valor soportado. Solo hay tres valores válidos para imagePullPolicy."
+  - "Los tres valores posibles son: Always, IfNotPresent y Never. Para una imagen con tag específico como nginx:1.25, IfNotPresent es lo más habitual."
+  - "Solución: cambia imagePullPolicy: Sometimes por imagePullPolicy: IfNotPresent (o Always, o Never)."
+successMessage: |
+  ¡Correcto! El Pod ahora tiene un imagePullPolicy válido.
+
+  Lo que aprendiste:
+  - imagePullPolicy solo acepta tres valores: Always, IfNotPresent, Never
+  - Always: cada vez que se crea un Pod, Kubernetes descarga la imagen
+  - IfNotPresent: solo descarga si la imagen no está en el nodo
+  - Never: nunca descarga, falla si la imagen no está en el nodo
+  - Los valores son case-sensitive — hay que escribirlos exactamente
+  - Si usas el tag :latest, Kubernetes usa Always por defecto
+
+i18n:
+  en:
+    title: "Invalid imagePullPolicy"
+    briefing: "The imagePullPolicy value is invalid. The API server rejects it. Fix the value so the Pod can be created."
+    hints:
+      - "The error says \"Sometimes\" is not a supported value. There are only three valid values for imagePullPolicy."
+      - "The three possible values are: Always, IfNotPresent, and Never. For an image with a specific tag like nginx:1.25, IfNotPresent is most common."
+      - "Solution: change imagePullPolicy: Sometimes to imagePullPolicy: IfNotPresent (or Always, or Never)."
+    successMessage: |
+      Correct! The Pod now has a valid imagePullPolicy.
+
+      What you learned:
+      - imagePullPolicy only accepts three values: Always, IfNotPresent, Never
+      - Always: every time a Pod is created, Kubernetes downloads the image
+      - IfNotPresent: only downloads if the image is not on the node
+      - Never: never downloads, fails if the image is not on the node
+      - Values are case-sensitive — they must be written exactly
+      - If you use the :latest tag, Kubernetes uses Always by default
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "El campo imagePullPolicy debe estar definido."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const containers = _get(parsed, 'spec.containers');
+          if (!Array.isArray(containers) || containers.length === 0) return { passed: true };
+          const container = containers[0];
+          if (!("imagePullPolicy" in container)) {
+            return {
+              passed: false,
+              errorMessage: "Warning: imagePullPolicy no está definido\n\nSin imagePullPolicy, Kubernetes usa un valor por defecto según el tag de la imagen. Es buena práctica definirlo explícitamente."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El campo imagePullPolicy debe estar definido."
+
+  - type: intention
+    errorMessage: "El valor de imagePullPolicy debe ser Always, IfNotPresent o Never."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const containers = _get(parsed, 'spec.containers');
+          if (!Array.isArray(containers) || containers.length === 0) return { passed: true };
+          const container = containers[0];
+          if (!("imagePullPolicy" in container)) return { passed: true };
+          const policy = String(container.imagePullPolicy);
+          const validPolicies = ["Always", "IfNotPresent", "Never"];
+          if (validPolicies.indexOf(policy) === -1) {
+            return {
+              passed: false,
+              errorMessage: "Error: imagePullPolicy \"" + policy + "\" no es un valor válido\n\nLos valores aceptados son:\n- Always: siempre descarga la imagen del registro\n- IfNotPresent: solo descarga si no está en cache local\n- Never: nunca descarga, solo usa la imagen local\n\nLos valores son case-sensitive. Asegúrate de escribirlo exactamente."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El valor de imagePullPolicy debe ser Always, IfNotPresent o Never."
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: |
+        error: error validating "pod.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const c = _get(p, 'spec.containers.0');
+            if (!c || !("imagePullPolicy" in c)) return false;
+            const policy = String(c.imagePullPolicy);
+            return ["Always", "IfNotPresent", "Never"].indexOf(policy) === -1;
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "pod.yaml": Pod "nginx-app" is invalid:
+        spec.containers[0].imagePullPolicy: Unsupported value: "Sometimes": supported values: "Always", "IfNotPresent", "Never"
+      exitCode: 1
+    - output: "pod/nginx-app created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const c = _get(p, 'spec.containers.0');
+            if (!c || !("imagePullPolicy" in c)) return false;
+            const policy = String(c.imagePullPolicy);
+            return ["Always", "IfNotPresent", "Never"].indexOf(policy) !== -1;
+          } catch { return false; }
+      output: |
+        NAME         READY   STATUS    RESTARTS   AGE
+        nginx-app   1/1     Running   0          5s
+      exitCode: 0
+    - output: "No resources found in default namespace."
+      exitCode: 0
+
+  "kubectl describe pod nginx-app":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const c = _get(p, 'spec.containers.0');
+            if (!c || !("imagePullPolicy" in c)) return false;
+            const policy = String(c.imagePullPolicy);
+            return ["Always", "IfNotPresent", "Never"].indexOf(policy) !== -1;
+          } catch { return false; }
+      output: |
+        Name:         nginx-app
+        Namespace:    default
+        Status:       Running
+        IP:           10.244.0.9
+        Containers:
+          nginx:
+            Image:           nginx:1.25
+            Image Pull Policy: IfNotPresent
+            Port:            80/TCP
+            State:           Running
+            Ready:           True
+        Events:
+          Type    Reason     Age   From               Message
+          ----    ------     ----  ----               -------
+          Normal  Scheduled  10s   default-scheduler  Successfully assigned default/nginx-app
+          Normal  Pulled     9s    kubelet            Container image already present
+          Normal  Created    9s    kubelet            Created container nginx
+          Normal  Started    8s    kubelet            Started container nginx
+      exitCode: 0
+    - output: "Error from server (NotFound): pods \"nginx-app\" not found"
+      exitCode: 1

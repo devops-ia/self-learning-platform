@@ -1,0 +1,163 @@
+id: ans-01-broken-playbook
+title: "Playbook sin hosts"
+briefing: "Este playbook de Ansible no tiene el campo hosts definido. Sin hosts, Ansible no sabe en que maquinas ejecutar las tareas. Corrigelo."
+
+prerequisites: []
+
+initialCode: |
+  ---
+  - name: Instalar y configurar Nginx
+    tasks:
+      - name: Instalar nginx
+        apt:
+          name: nginx
+          state: present
+
+      - name: Iniciar nginx
+        service:
+          name: nginx
+          state: started
+          enabled: true
+
+hints:
+  - "Un play de Ansible necesita el campo hosts: para saber en que maquinas ejecutarse."
+  - "hosts: puede ser un grupo del inventario (como 'webservers'), 'all', o 'localhost'."
+  - "Anade 'hosts: all' (o el grupo que prefieras) al mismo nivel que 'name:' y 'tasks:'."
+
+successMessage: |
+  Correcto! El playbook ahora tiene hosts definido.
+
+  Lo que aprendiste:
+  - Cada play en un playbook necesita el campo hosts para definir el target
+  - hosts puede ser un grupo del inventario, un patron, o 'all'
+  - Sin hosts, Ansible no sabe donde ejecutar las tareas y falla inmediatamente
+  - Un playbook es una lista de plays, y cada play necesita al menos hosts y tasks
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser valido."
+    check:
+      yaml_valid: true
+    failMessage: |
+      Error: YAML parse error
+
+      Revisa la indentacion. En YAML, la indentacion define la estructura. Cada nivel usa 2 espacios (no tabs).
+
+  - type: semantic
+    errorMessage: "El play debe tener el campo hosts."
+    check:
+      contains: "hosts:"
+    failMessage: |
+      ERROR! the field 'hosts' is required but was not set
+
+      Cada play necesita un campo hosts: que indique en que maquinas se ejecutan las tareas.
+      Anade hosts: all (o un grupo de tu inventario) al play.
+
+  - type: intention
+    errorMessage: "El campo hosts debe tener un valor."
+    check:
+      match: "hosts:\\s*\\S+"
+    failMessage: |
+      ERROR! the field 'hosts' has an invalid value
+
+      El campo hosts: necesita un valor. Puede ser:
+      - hosts: all              (todas las maquinas)
+      - hosts: webservers       (un grupo del inventario)
+      - hosts: localhost        (la maquina local)
+
+i18n:
+  en:
+    title: "Playbook without hosts"
+    briefing: "This Ansible playbook is missing the hosts field. Without hosts, Ansible doesn't know which machines to run tasks on. Fix it."
+    hints:
+      - "An Ansible play needs the hosts: field to know which machines to target."
+      - "hosts: can be an inventory group (like 'webservers'), 'all', or 'localhost'."
+      - "Add 'hosts: all' (or your preferred group) at the same level as 'name:' and 'tasks:'."
+    successMessage: |
+      Correct! The playbook now has hosts defined.
+
+      What you learned:
+      - Each play in a playbook needs the hosts field to define the target
+      - hosts can be an inventory group, a pattern, or 'all'
+      - Without hosts, Ansible doesn't know where to run tasks and fails immediately
+      - A playbook is a list of plays, and each play needs at least hosts and tasks
+
+terminalCommands:
+  "ansible-playbook playbook.yml":
+    - when:
+        not: { yaml_valid: true }
+      output: |
+        ERROR! Syntax Error while loading YAML.
+          found a tab character that violate indentation
+      exitCode: 1
+
+    - when:
+        not_contains: "hosts:"
+      output: |
+        ERROR! the field 'hosts' is required but was not set
+
+        The error appears to be in 'playbook.yml':
+        This play does not have a 'hosts' field. Every play must specify
+        which hosts it applies to.
+      exitCode: 1
+
+    - when:
+        not_match: "hosts:\\s*\\S+"
+      output: |
+        ERROR! the field 'hosts' has an invalid value
+
+        The error appears to be in 'playbook.yml':
+        The 'hosts' field cannot be empty.
+      exitCode: 1
+
+    - output: |
+        PLAY [Instalar y configurar Nginx] *****************************************
+
+        TASK [Gathering Facts] *****************************************************
+        ok: [server1]
+        ok: [server2]
+
+        TASK [Instalar nginx] ******************************************************
+        changed: [server1]
+        changed: [server2]
+
+        TASK [Iniciar nginx] *******************************************************
+        changed: [server1]
+        changed: [server2]
+
+        PLAY RECAP *****************************************************************
+        server1                    : ok=3    changed=2    unreachable=0    failed=0
+        server2                    : ok=3    changed=2    unreachable=0    failed=0
+      exitCode: 0
+
+  "ansible-playbook playbook.yml --check":
+    - when:
+        not_contains: "hosts:"
+      output: |
+        ERROR! the field 'hosts' is required but was not set
+      exitCode: 1
+
+    - output: |
+        PLAY [Instalar y configurar Nginx] *****************************************
+
+        TASK [Gathering Facts] *****************************************************
+        ok: [server1]
+
+        TASK [Instalar nginx] ******************************************************
+        changed: [server1] (check mode)
+
+        TASK [Iniciar nginx] *******************************************************
+        changed: [server1] (check mode)
+
+        PLAY RECAP *****************************************************************
+        server1                    : ok=3    changed=2    unreachable=0    failed=0
+      exitCode: 0
+
+  "ansible --version":
+    - output: |
+        ansible [core 2.16.0]
+          config file = /etc/ansible/ansible.cfg
+          python version = 3.11.6
+          jinja version = 3.1.2
+          libyaml = True
+      exitCode: 0

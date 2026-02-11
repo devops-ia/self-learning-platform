@@ -1,237 +1,341 @@
 # Contributing: Adding New Exercises
 
-This guide explains how to add new exercises to the DevOps Learning Platform.
+Exercises are stored in the database and loaded at runtime. There are two ways to add them: **YAML import** (recommended) or **admin panel**.
 
-## Exercise Architecture
+## Quick Start: Add an Exercise via YAML
 
-Each exercise is a self-contained TypeScript file that defines:
+1. Copy the template:
+   ```bash
+   cp exercises/_template.yaml exercises/<module>/NN-slug.yaml
+   ```
 
-1. **The broken code** the student starts with
-2. **Validation rules** that check the student's fix
-3. **Simulated terminal commands** that produce realistic output based on the current code state
-4. **Progressive hints** revealed after repeated failures
-5. **A success message** explaining what was learned
+2. Edit the YAML file (see [YAML Format](#yaml-exercise-format) below)
 
-## Step-by-Step: Add a New Exercise
+3. Import into the database:
+   ```bash
+   npm run exercises:import
+   ```
 
-### 1. Create the Exercise File
+4. Test:
+   ```bash
+   npm run dev
+   ```
 
-Create a new `.ts` file in the appropriate module directory:
+That's it. The import script reads the YAML, validates it, and inserts/updates the exercise in the database. The app loads it at runtime.
 
+## Quick Start: Add an Exercise via Admin Panel
+
+1. Log in as admin (default: `admin@devopslab.local` / `admin1234`)
+2. Go to `/admin/exercises` and click "Create exercise"
+3. Fill in the fields (ID, module, title, briefing, initial code, validations, terminal commands)
+4. Save — the exercise is immediately available
+
+## Adding a New Technology Module
+
+### Via YAML
+
+1. Add the module to `exercises/_modules.yaml`:
+   ```yaml
+   modules:
+     ansible:
+       title: "Ansible"
+       description:
+         es: "Aprende a escribir playbooks de Ansible corrigiendo errores comunes."
+         en: "Learn to write Ansible playbooks by fixing common errors."
+       icon: "Cog"          # lucide-react icon name
+       prefix: "ans"        # ID prefix for exercises
+       language: "yaml"     # default language for the module
+   ```
+
+2. Create exercises in `exercises/ansible/`:
+   ```bash
+   mkdir exercises/ansible
+   cp exercises/_template.yaml exercises/ansible/01-broken-playbook.yaml
+   ```
+
+3. Import and test:
+   ```bash
+   npm run exercises:import
+   npm run dev
+   # Navigate to /modules/ansible
+   ```
+
+### Via Admin Panel
+
+1. Go to `/admin/modules` and click "Create module"
+2. Fill in the module details (ID, title, prefix, icon, language, descriptions)
+3. Create exercises under the new module at `/admin/exercises`
+
+Available icons: Terminal, Box, Cog, Settings, Server, Cloud, Database, Shield.
+
+## YAML Exercise Format
+
+Each exercise is a YAML file in `exercises/<module>/NN-slug.yaml`.
+
+```yaml
+id: tf-13-no-tags
+title: "Recursos sin tags"
+briefing: "Estos recursos no tienen tags. Anade los tags necesarios."
+
+prerequisites: []  # optional, empty = no prerequisites
+# language: "hcl"  # optional, defaults to module's language
+
+initialCode: |
+  resource "aws_instance" "web" {
+    ami = "ami-0c55b159cbfafe1f0"
+  }
+
+hints:
+  - "Primera pista general."
+  - "Segunda pista mas especifica."
+  - "Tercera pista: casi la solucion."
+
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - Punto 1
+  - Punto 2
+
+validations:
+  - type: syntax
+    errorMessage: "Descripcion corta."
+    check:
+      contains: "tags"
+    failMessage: |
+      Error: no tags found
+      Explicacion detallada.
+
+terminalCommands:
+  "terraform plan":
+    - when:
+        not_contains: "tags"
+      output: "Error: missing tags"
+      exitCode: 1
+    - output: "Plan: 1 to add"
+      exitCode: 0
 ```
-src/lib/exercises/
-├── terraform/
-│   ├── 01-broken-provider.ts
-│   ├── 02-variables-outputs.ts
-│   └── 03-your-new-exercise.ts    <-- new file
-└── kubernetes/
-    ├── 01-invalid-pod.ts
-    ├── 02-crashloop-debug.ts
-    └── 03-your-new-exercise.ts    <-- new file
+
+### Declarative Check Reference
+
+Checks define conditions on the student's code. Used in both `validations[].check` and `terminalCommands[].when`.
+
+| Check | Description | Example |
+|-------|-------------|---------|
+| `contains: "str"` | Code includes string | `contains: "required_providers"` |
+| `not_contains: "str"` | Code does NOT include string | `not_contains: "zones"` |
+| `match: "regex"` | Code matches regex | `match: "region\\s*="` |
+| `not_match: "regex"` | Code does NOT match regex | `not_match: "zones\\s*="` |
+| `yaml_valid: true` | YAML parses without errors | `yaml_valid: true` |
+| `yaml_has: "path"` | Nested field exists | `yaml_has: "spec.containers"` |
+| `yaml_not_has: "path"` | Nested field does NOT exist | `yaml_not_has: "spec.container"` |
+| `yaml_is_array: "path"` | Field is an array | `yaml_is_array: "spec.containers"` |
+| `yaml_equals: {path, value}` | Field equals value | `yaml_equals: {path: "kind", value: "Pod"}` |
+| `yaml_items_have: {path, fields}` | Array items have fields | `yaml_items_have: {path: "spec.containers", fields: ["name","image"]}` |
+
+Paths support array indices: `spec.containers.0.resources.limits.cpu`
+
+### Combinators
+
+```yaml
+# AND — all must be true
+check:
+  all:
+    - contains: "Name"
+    - contains: "Environment"
+
+# OR — at least one must be true
+check:
+  any:
+    - contains: "Always"
+    - contains: "IfNotPresent"
+
+# NOT — negate a check
+check:
+  not: { yaml_valid: true }
 ```
 
-### 2. Define the Exercise
+### Custom JavaScript (Escape Hatch)
 
-Every exercise implements the `Exercise` interface from `src/lib/exercises/types.ts`:
+For validations that can't be expressed declaratively:
 
-```typescript
-import { Exercise } from "../types";
-
-export const yourExercise: Exercise = {
-  // Unique ID. Convention: "tf-NN-slug" for Terraform, "k8s-NN-slug" for Kubernetes
-  id: "tf-03-your-exercise",
-
-  // Which module this belongs to
-  module: "terraform",
-
-  // Short title shown in the exercise list
-  title: "Tu título aquí",
-
-  // 1-2 sentences. What's broken and why it matters. Spanish (Spain).
-  briefing: "Este código tiene X problema. Terraform va a fallar. Corrige el error.",
-
-  // Starting code the student sees in the editor (intentionally broken)
-  initialCode: `your broken code here`,
-
-  // "hcl" for Terraform, "yaml" for Kubernetes
-  language: "hcl",
-
-  // Simulated terminal commands (see section below)
-  terminalCommands: { /* ... */ },
-
-  // Validation rules run in order (see section below)
-  validations: [ /* ... */ ],
-
-  // Exercise IDs that must be completed first. Empty array = unlocked by default.
-  prerequisites: ["tf-02-variables-outputs"],
-
-  // Progressive hints. Hint N is shown after 2*N failed attempts.
-  hints: [
-    "First gentle nudge",
-    "More specific guidance",
-    "Almost the full solution",
-  ],
-
-  // Shown when all validations pass. Explain what was learned.
-  successMessage: "¡Correcto! Lo que aprendiste:\n- Point 1\n- Point 2",
-};
+```yaml
+validations:
+  - type: semantic
+    errorMessage: "Custom check."
+    check:
+      custom: |
+        const match = code.match(/resource\s+"aws_instance"/);
+        if (!match) {
+          return { passed: false, errorMessage: "No instance found" };
+        }
+        return { passed: true };
+    failMessage: ""  # not used when custom provides errorMessage
 ```
 
-### 3. Define Terminal Commands
+For Kubernetes exercises, `yaml` (js-yaml) and `_get` (nested field helper) are available:
 
-Terminal commands are functions that receive the student's current code and return simulated output:
-
-```typescript
-import { TerminalResponse } from "../types";
-
-terminalCommands: {
-  "terraform plan": (code: string): TerminalResponse => {
-    // Parse/check the code and return appropriate output
-    if (codeHasBug(code)) {
-      return {
-        output: "Error: realistic error message here",
-        exitCode: 1,
-      };
+```yaml
+check:
+  custom: |
+    const parsed = yaml.load(code) as Record<string, unknown>;
+    const containers = _get(parsed, "spec.containers");
+    if (!Array.isArray(containers)) {
+      return { passed: false, errorMessage: "containers must be an array" };
     }
-    return {
-      output: "Success: realistic success output",
-      exitCode: 0,
-    };
-  },
-  "terraform init": (code: string): TerminalResponse => {
-    // ...
-  },
-}
+    return { passed: true };
 ```
 
-**Tips:**
-- Match real CLI output format as closely as possible
-- The output updates dynamically — when the student changes their code and re-runs the command, the output reflects the current state
-- For complex logic, extract handler functions (see `02-crashloop-debug.ts` for an example)
+## Validation Types
 
-### 4. Define Validation Rules
+Order validations from basic to advanced:
 
-Validations run in order. Each has a type, an error message, and a check function:
+1. **syntax** — Parse-level checks (YAML valid, required blocks present)
+2. **semantic** — Schema-level checks (correct field names, types)
+3. **intention** — Logic checks (dependencies, cross-references)
 
-```typescript
-import { ValidationResult } from "../types";
+## Terminal Commands
 
-validations: [
-  {
-    // "syntax" = basic structural check
-    // "semantic" = logical correctness
-    // "intention" = matches the intended solution
-    type: "syntax",
-    errorMessage: "Short description of the rule",
-    check: (code: string): ValidationResult => {
-      if (/* code fails this check */) {
-        return {
-          passed: false,
-          errorMessage: "Detailed explanation of what's wrong and how to fix it",
-        };
-      }
-      return { passed: true };
-    },
-  },
-  // Add more rules...
-]
+Ordered list of condition-response pairs. Evaluated top to bottom; first match wins. Last entry (without `when`) is the default.
+
+```yaml
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when: { not: { yaml_valid: true } }
+      output: "error: invalid YAML"
+      exitCode: 1
+    - when: { yaml_not_has: "spec.containers" }
+      output: "Error: missing containers"
+      exitCode: 1
+    - output: "pod/my-pod created"  # default
+      exitCode: 0
 ```
 
-**Tips:**
-- Order validations from basic (syntax) to advanced (intention)
-- Error messages should explain *why* something is wrong, not just *what* is wrong
-- For Kubernetes exercises, use `js-yaml` to parse YAML — it's already a dependency
-- For Terraform exercises, use regex-based checks against the HCL text
+## Translations (i18n)
 
-### 5. Register the Exercise
+The platform supports multiple languages. The default language is **Spanish (Spain)**, and English (US) is included. You can add more languages.
 
-Add your exercise to the registry in `src/lib/exercises/index.ts`:
+### How it works
 
-```typescript
-import { yourExercise } from "./terraform/03-your-exercise";
+- **UI strings**: defined in `src/lib/i18n/locales/{es,en}.ts`
+- **Exercise content**: default in YAML (Spanish), optional `i18n:` block for translations
+- **Module descriptions**: per-language in `exercises/_modules.yaml`
+- **Language selection**: client-side via `<select>` in the navbar, saved in localStorage
 
-export const exercises: Record<string, Exercise> = {
-  // ... existing exercises
-  "tf-03-your-exercise": yourExercise,
-};
+### Adding a new UI language
 
-export const terraformExercises = [brokenProvider, variablesOutputs, yourExercise];
+1. Copy an existing locale file:
+   ```bash
+   cp src/lib/i18n/locales/en.ts src/lib/i18n/locales/fr.ts
+   ```
+
+2. Translate all strings in the new file
+
+3. Register the locale in `src/lib/i18n/context.tsx`:
+   ```tsx
+   import { fr } from "./locales/fr";
+
+   const locales: Record<string, Translations> = { es, en, fr };
+
+   export const availableLanguages = [
+     { code: "es", label: "Español" },
+     { code: "en", label: "English" },
+     { code: "fr", label: "Français" },
+   ];
+   ```
+
+4. Add the locale to the server-side files too:
+   - `src/lib/terminal/simulator.ts`: add `import { fr } from "../i18n/locales/fr";` and add to `locales`
+   - `src/lib/validators/engine.ts`: same pattern
+
+### Translating exercise content
+
+Add an `i18n:` block to any exercise YAML:
+
+```yaml
+title: "Playbook sin hosts"
+briefing: "Este playbook no tiene hosts..."
+
+i18n:
+  en:
+    title: "Playbook without hosts"
+    briefing: "This playbook is missing the hosts field..."
+    hints:
+      - "An Ansible play needs the hosts: field..."
+    successMessage: |
+      Correct! The playbook now has hosts defined.
+      ...
 ```
 
-### 6. Add the Exercise Page Data
+Only include the fields you want to translate. Missing fields fall back to the default (Spanish).
 
-Add the client-side exercise metadata to the exercise page component. For Terraform exercises, edit `src/app/modules/terraform/[exerciseId]/page.tsx`:
+### Translating module descriptions
 
-```typescript
-const exerciseData = {
-  // ... existing exercises
-  "tf-03-your-exercise": {
-    title: "Tu título aquí",
-    briefing: "Tu briefing aquí.",
-    language: "hcl" as const,
-    initialCode: `same initial code as in the exercise definition`,
-  },
-};
+In `exercises/_modules.yaml`, use a map for `description`:
+
+```yaml
+modules:
+  terraform:
+    title: "Terraform"
+    description:
+      es: "Aprende a configurar infraestructura como código..."
+      en: "Learn to configure infrastructure as code..."
 ```
 
-### 7. Add to the Module Overview
+### Language guidelines (Spanish)
 
-Add the exercise to the list in the module page. For Terraform, edit `src/app/modules/terraform/page.tsx`:
+The default language is **Spanish (Spain, tu form)**:
 
-```typescript
-const exercises = [
-  // ... existing exercises
-  {
-    id: "tf-03-your-exercise",
-    title: "Tu título aquí",
-    status: "locked" as const,
-    prerequisites: ["tf-02-variables-outputs"],
-  },
-];
-```
-
-### 8. Test
-
-```bash
-npm run dev
-```
-
-1. Navigate to the module overview — verify the exercise appears (locked/available)
-2. Open the exercise — verify the editor loads with the broken code
-3. Type terminal commands — verify simulated output is correct
-4. Submit the broken code — verify error feedback is helpful
-5. Fix the code — verify all validations pass
-6. Check that completing this exercise unlocks the next one
-
-## Language Guidelines
-
-All student-facing text must be in **Spanish (Spain)**:
-
-- Use **tú** form, not voseo: "corrige" not "corregí", "revisa" not "revisá"
-- Use "añade" instead of "agregá"
+- Use **tu** form: "corrige" not "corregi", "revisa" not "revisa"
+- Use "anade" instead of "agrega"
 - Keep briefings to 1-2 sentences
 - Error messages should mimic real CLI output, then explain in Spanish
 - Success messages should list 3-5 specific things the student learned
 
-## File Naming Convention
+## File Naming
 
 ```
-NN-slug.ts
+NN-slug.yaml
 ```
 
 - `NN` = two-digit sequential number (01, 02, 03...)
 - `slug` = lowercase, hyphen-separated description
 
+## ID Format
+
+```
+<prefix>-<NN>-<slug>
+```
+
+- `prefix` = module prefix from `_modules.yaml` (tf, k8s, ans, etc.)
+- `NN` = matches the file number
+- `slug` = matches the file slug
+
 ## Checklist
 
-- [ ] Exercise file created in `src/lib/exercises/<module>/`
-- [ ] Registered in `src/lib/exercises/index.ts`
-- [ ] Client-side data added to `src/app/modules/<module>/[exerciseId]/page.tsx`
-- [ ] Listed in `src/app/modules/<module>/page.tsx`
-- [ ] Prerequisites set correctly
-- [ ] Terminal commands produce realistic output for both broken and fixed code
-- [ ] Validation error messages explain *why*, not just *what*
-- [ ] Hints are progressive (vague → specific)
-- [ ] Success message lists what was learned
-- [ ] All text in Spanish (Spain, tú form)
+### YAML exercises
+- [ ] YAML file created in `exercises/<module>/`
+- [ ] ID matches `<prefix>-NN-slug` format
+- [ ] `npm run exercises:import` succeeds
 - [ ] `npm run build` passes
+- [ ] Exercise appears in module overview
+- [ ] Terminal commands produce realistic output
+- [ ] Validation errors explain *why*, not just *what*
+- [ ] Hints are progressive (vague -> specific)
+- [ ] Default text in Spanish (Spain, tu form)
+- [ ] English translation added in `i18n.en` block (optional but appreciated)
+
+### New modules
+
+- [ ] Module added to `exercises/_modules.yaml` with per-language descriptions
+- [ ] At least one exercise YAML exists
+- [ ] `npm run exercises:import` succeeds
+- [ ] Module page renders at `/modules/<slug>`
+
+### New language
+
+- [ ] Locale file created in `src/lib/i18n/locales/`
+- [ ] Registered in `src/lib/i18n/context.tsx`
+- [ ] Added to `src/lib/terminal/simulator.ts` and `src/lib/validators/engine.ts`
+- [ ] All UI strings translated
+- [ ] Module descriptions added in `exercises/_modules.yaml`

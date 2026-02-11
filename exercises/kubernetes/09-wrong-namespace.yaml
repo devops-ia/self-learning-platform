@@ -1,0 +1,166 @@
+id: "k8s-09-wrong-namespace"
+title: "Namespace inexistente"
+briefing: "El recurso se aplica en un namespace que no existe en el cluster. Revisa cómo crear el namespace o cambiar la referencia."
+prerequisites: []
+language: "yaml"
+initialCode: |
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: api-server
+    namespace: production
+    labels:
+      app: api
+      env: production
+  spec:
+    containers:
+      - name: api
+        image: node:20-alpine
+        command: ["node", "server.js"]
+        ports:
+          - containerPort: 3000
+
+hints:
+  - "Ejecuta kubectl get namespaces. El namespace \"production\" no aparece en la lista. El Pod no puede crearse en un namespace que no existe."
+  - "Puedes definir el Namespace en el mismo archivo YAML. Usa --- para separar múltiples documentos YAML en un solo archivo."
+  - "Solución: añade un recurso Namespace al principio del archivo:\n---\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: production\n---\n(seguido del Pod original)"
+successMessage: |
+  ¡Correcto! El namespace y el Pod se crean juntos correctamente.
+
+  Lo que aprendiste:
+  - Un Pod no puede crearse en un namespace que no existe
+  - kubectl get namespaces muestra los namespaces disponibles
+  - Puedes incluir múltiples recursos en un solo archivo YAML separados por ---
+  - El orden importa: el Namespace debe definirse antes que los recursos que lo usan
+  - Los namespaces permiten organizar y aislar recursos dentro de un cluster
+  - Los namespaces por defecto son: default, kube-system, kube-public, kube-node-lease
+
+i18n:
+  en:
+    title: "Non-existent namespace"
+    briefing: "The resource is applied to a namespace that doesn't exist in the cluster. Review how to create the namespace or change the reference."
+    hints:
+      - "Run kubectl get namespaces. The \"production\" namespace doesn't appear in the list. The Pod cannot be created in a namespace that doesn't exist."
+      - "You can define the Namespace in the same YAML file. Use --- to separate multiple YAML documents in a single file."
+      - "Solution: add a Namespace resource at the beginning of the file:\n---\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: production\n---\n(followed by the original Pod)"
+    successMessage: |
+      Correct! The namespace and Pod are created together correctly.
+
+      What you learned:
+      - A Pod cannot be created in a namespace that doesn't exist
+      - kubectl get namespaces shows the available namespaces
+      - You can include multiple resources in a single YAML file separated by ---
+      - Order matters: the Namespace must be defined before the resources that use it
+      - Namespaces allow organizing and isolating resources within a cluster
+      - Default namespaces are: default, kube-system, kube-public, kube-node-lease
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.loadAll(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "El manifiesto debe contener un recurso Pod."
+    check:
+      custom: |
+        try {
+          const docs = yaml.loadAll(code);
+          const hasPod = docs.some(function(doc) {
+            return doc && doc.kind === "Pod";
+          });
+          if (!hasPod) {
+            return {
+              passed: false,
+              errorMessage: "Error: no se ha encontrado un recurso Pod en el manifiesto\n\nEl manifiesto debe contener al menos un recurso de tipo Pod."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El manifiesto debe contener un recurso Pod."
+
+  - type: intention
+    errorMessage: "El namespace \"production\" debe existir antes de crear el Pod."
+    check:
+      custom: |
+        try {
+          const docs = yaml.loadAll(code);
+          const hasNamespace = docs.some(function(doc) {
+            return doc && doc.kind === "Namespace" && doc.metadata && doc.metadata.name === "production";
+          });
+          const pod = docs.find(function(doc) { return doc && doc.kind === "Pod"; });
+          const podNamespace = pod && pod.metadata && pod.metadata.namespace;
+          if (podNamespace === "production" && !hasNamespace) {
+            return {
+              passed: false,
+              errorMessage: "Error: namespace \"production\" not found\n\nEl Pod hace referencia al namespace production, pero este namespace no existe en el cluster. Necesitas crear el Namespace primero.\n\nPuedes incluir la definición del Namespace en el mismo archivo YAML usando --- como separador de documentos."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El namespace \"production\" debe existir antes de crear el Pod."
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        custom: |
+          try { yaml.loadAll(code); return false; } catch { return true; }
+      output: |
+        error: error validating "pod.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const docs = yaml.loadAll(code);
+            const hasNamespace = docs.some(function(d) {
+              return d && d.kind === "Namespace" && d.metadata && d.metadata.name === "production";
+            });
+            const pod = docs.find(function(d) { return d && d.kind === "Pod"; });
+            const podNamespace = pod && pod.metadata && pod.metadata.namespace;
+            return podNamespace === "production" && !hasNamespace;
+          } catch { return false; }
+      output: |
+        Error from server (NotFound): error when creating "pod.yaml": namespaces "production" not found
+      exitCode: 1
+    - output: |
+        namespace/production created
+        pod/api-server created
+      exitCode: 0
+
+  "kubectl get namespaces":
+    - output: |
+        NAME              STATUS   AGE
+        default           Active   30d
+        kube-system       Active   30d
+        kube-public       Active   30d
+        kube-node-lease   Active   30d
+      exitCode: 0
+
+  "kubectl get pods -n production":
+    - when:
+        custom: |
+          try {
+            const docs = yaml.loadAll(code);
+            const hasNamespace = docs.some(function(d) {
+              return d && d.kind === "Namespace" && d.metadata && d.metadata.name === "production";
+            });
+            const pod = docs.find(function(d) { return d && d.kind === "Pod"; });
+            const podNamespace = pod && pod.metadata && pod.metadata.namespace;
+            return podNamespace === "production" && hasNamespace;
+          } catch { return false; }
+      output: |
+        NAME          READY   STATUS    RESTARTS   AGE
+        api-server   1/1     Running   0          5s
+      exitCode: 0
+    - output: "No resources found in production namespace."
+      exitCode: 0

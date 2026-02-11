@@ -1,11 +1,17 @@
 import { getExercise } from "../exercises";
 import { TerminalResponse } from "../exercises/types";
+import { es } from "../i18n/locales/es";
+import { en } from "../i18n/locales/en";
+
+const locales: Record<string, typeof es> = { es, en };
 
 export function executeCommand(
   exerciseId: string,
   command: string,
-  currentCode: string
+  currentCode: string,
+  lang: string = "es"
 ): TerminalResponse {
+  const t = locales[lang] || es;
   const exercise = getExercise(exerciseId);
   if (!exercise) {
     return {
@@ -32,7 +38,7 @@ export function executeCommand(
   if (trimmedCommand === "help" || trimmedCommand === "?") {
     const availableCommands = Object.keys(exercise.terminalCommands);
     return {
-      output: `Comandos disponibles para este ejercicio:\n${availableCommands.map((c) => `  ${c}`).join("\n")}\n\nTambién: help, clear`,
+      output: `${t.terminal.availableCommands}\n${availableCommands.map((c) => `  ${c}`).join("\n")}\n\n${t.terminal.also}`,
       exitCode: 0,
     };
   }
@@ -49,7 +55,7 @@ export function executeCommand(
   }
 
   return {
-    output: `bash: ${trimmedCommand.split(" ")[0]}: command not found\n\nEscribe "help" para ver los comandos disponibles.`,
+    output: `bash: ${trimmedCommand.split(" ")[0]}: ${t.terminal.commandNotFound}`,
     exitCode: 127,
   };
 }
