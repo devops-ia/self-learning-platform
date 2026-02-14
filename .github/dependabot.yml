@@ -12,7 +12,7 @@ updates:
       github-actions:
         patterns:
           - "*"
-  - package-ecosystem: pip
+  - package-ecosystem: npm
     directory: "/"
     schedule:
       interval: monthly
@@ -21,7 +21,7 @@ updates:
       - enhancement
       - dependency-management
     groups:
-      pip:
+      npm:
         patterns:
           - "*"
   - package-ecosystem: docker
