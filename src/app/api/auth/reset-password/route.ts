@@ -5,12 +5,13 @@ import { db } from "@/lib/db";
 import { passwordResetTokens, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { validatePassword } from "@/lib/auth/password";
+import { encrypt } from "@/lib/crypto";
 
 export const dynamic = "force-dynamic";
 
 const resetPasswordSchema = z.object({
   token: z.string(),
-  newPassword: z.string().min(8),
+  newPassword: z.string().min(12),
 });
 
 export async function POST(req: NextRequest) {
@@ -31,13 +32,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: pwCheck.error }, { status: 400 });
   }
 
+  // Encrypt token for lookup (tokens are stored encrypted)
+  const encryptedToken = encrypt(token);
+
   // Look up token
   const tokenRecord = db
     .select()
     .from(passwordResetTokens)
     .where(
       and(
-        eq(passwordResetTokens.token, token),
+        eq(passwordResetTokens.token, encryptedToken),
         eq(passwordResetTokens.used, false)
       )
     )
@@ -68,10 +72,10 @@ export async function POST(req: NextRequest) {
     parallelism: 1,
   });
 
-  // Update user password
+  // Update user password (email field now contains email_hash)
   db.update(users)
     .set({ passwordHash })
-    .where(eq(users.email, tokenRecord.email))
+    .where(eq(users.emailHash, tokenRecord.email))
     .run();
 
   // Mark token as used
