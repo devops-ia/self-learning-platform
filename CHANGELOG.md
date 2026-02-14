@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/devops-ia/self-learning-platform/compare/v1.0.0...v1.1.0) (2026-02-14)
+
+
+### Features
+
+* **deps:** bump the npm group and security with 14 updates ([#14](https://github.com/devops-ia/self-learning-platform/issues/14)) ([b762ea3](https://github.com/devops-ia/self-learning-platform/commit/b762ea3c4a6c63a4a2a32e123b4791d3653fd12e))
+
 # 1.0.0 (2026-02-14)
 
 
