@@ -14,6 +14,8 @@ import {
 import { eq } from "drizzle-orm";
 import { Exercise, ValidationResult, TerminalResponse } from "./types";
 import * as yaml from "js-yaml";
+import { safeEval } from "./safe-eval";
+import { _get } from "./helpers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -74,30 +76,6 @@ export interface ExerciseMetadata {
   initialCode: string;
   language: string;
   i18n?: Record<string, { title?: string; briefing?: string }>;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Safely access a nested field in an object using dot notation.
- * Supports numeric indices for arrays (e.g. "spec.containers.0.name").
- */
-function _get(obj: unknown, path: string): unknown {
-  const parts = path.split(".");
-  let current: unknown = obj;
-  for (const part of parts) {
-    if (current === null || current === undefined || typeof current !== "object") {
-      return undefined;
-    }
-    if (Array.isArray(current)) {
-      const idx = parseInt(part, 10);
-      if (isNaN(idx)) return undefined;
-      current = current[idx];
-    } else {
-      current = (current as Record<string, unknown>)[part];
-    }
-  }
-  return current;
 }
 
 // ─── Runtime Check Interpreter ────────────────────────────────────────────────
@@ -181,12 +159,16 @@ export function evaluateCheck(check: Check, code: string): boolean {
   }
   if (check.custom !== undefined) {
     try {
-      // Execute custom code — only admin-created content runs here
-      const fn = new Function("code", "yaml", "_get", check.custom);
-      const result = fn(code, yaml, _get);
+      // Execute custom code with safe evaluation
+      // SECURITY: Only admin-created content runs here
+      const result = safeEval(check.custom, code);
       // Custom code can return: boolean, or {passed: boolean, ...}
       if (typeof result === "boolean") return result;
-      if (result && typeof result === "object" && "passed" in result) return result.passed;
+      if (result && typeof result === "object" && "passed" in result) {
+        return typeof (result as { passed: unknown }).passed === "boolean"
+          ? (result as { passed: boolean }).passed
+          : !!(result as { passed: unknown }).passed;
+      }
       return !!result;
     } catch {
       return false;
@@ -201,10 +183,16 @@ export function evaluateCheck(check: Check, code: string): boolean {
  */
 function executeCustomValidation(customCode: string, code: string): ValidationResult {
   try {
-    const fn = new Function("code", "yaml", "_get", customCode);
-    const result = fn(code, yaml, _get);
+    // Execute with safe evaluation
+    const result = safeEval(customCode, code);
     if (result && typeof result === "object" && "passed" in result) {
-      return result as ValidationResult;
+      const typedResult = result as { passed: unknown; errorMessage?: unknown };
+      return {
+        passed: typeof typedResult.passed === "boolean" ? typedResult.passed : !!typedResult.passed,
+        ...(typedResult.errorMessage && typeof typedResult.errorMessage === "string"
+          ? { errorMessage: typedResult.errorMessage }
+          : {})
+      };
     }
     return { passed: !!result };
   } catch (e) {
@@ -244,8 +232,7 @@ function hydrateTerminalCommand(responses: StoredTerminalResponse[]) {
         // If when has only custom code, execute it
         if (resp.when.custom !== undefined && Object.keys(resp.when).length === 1) {
           try {
-            const fn = new Function("code", "yaml", "_get", resp.when.custom);
-            const result = fn(code, yaml, _get);
+            const result = safeEval(resp.when.custom, code);
             if (result) {
               return { output: resp.output, exitCode: resp.exitCode };
             }

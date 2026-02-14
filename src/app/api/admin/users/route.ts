@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
 
 const createUserSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(12),
   username: z.string().min(2).max(50).optional(),
   role: z.enum(["admin", "user"]).default("user"),
 });

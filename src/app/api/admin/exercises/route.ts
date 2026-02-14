@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { exercises, modules } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
 import { invalidateExerciseCache } from "@/lib/exercises";
+import { checkRateLimit } from "@/lib/auth/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,19 @@ const createExerciseSchema = z.object({
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin();
   if (auth.error) return auth.error;
+
+  // Rate limiting for admin operations (combine user + IP for security)
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  const rl = checkRateLimit(`admin:exercise:create:${auth.userId}:${ip}`);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please slow down." },
+      { status: 429 }
+    );
+  }
 
   const body = await req.json().catch(() => null);
   const parsed = createExerciseSchema.safeParse(body);

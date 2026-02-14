@@ -2,8 +2,10 @@ import { db } from "@/lib/db";
 import { rateLimits } from "@/lib/db/schema";
 import { eq, lt } from "drizzle-orm";
 
+// Disable rate limiting in test environments or allow very high limits
+const isTest = process.env.NODE_ENV === "test" || process.env.CI === "true";
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = isTest ? 1000 : 5; // Very high limit in tests
 const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
 let lastCleanup = 0;
 

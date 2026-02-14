@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { passwordResetTokens, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { isSmtpConfigured, sendPasswordResetEmail } from "@/lib/email";
+import { hmacHash, safeDecrypt, encrypt } from "@/lib/crypto";
+import { checkRateLimit } from "@/lib/auth/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Rate limiting
+  const ip =
+    req.headers.get("x-forwarded-for") ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  const rl = checkRateLimit(`forgot-password:${ip}`);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many attempts. Try again later." },
+      { status: 429 }
+    );
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = forgotPasswordSchema.safeParse(body);
   if (!parsed.success) {
@@ -31,30 +46,34 @@ export async function POST(req: NextRequest) {
 
   const { email } = parsed.data;
 
-  // Look up user
-  const user = db.select().from(users).where(eq(users.email, email)).get();
+  // Look up user by email_hash (encrypted email architecture)
+  const emailH = hmacHash(email);
+  const user = db.select().from(users).where(eq(users.emailHash, emailH)).get();
 
   // Always return success (don't reveal if email exists)
   if (!user) {
     return NextResponse.json({ success: true });
   }
 
+  // Decrypt email for sending the reset email
+  const decryptedEmail = safeDecrypt(user.email) || email;
+
   // Generate token
   const token = randomUUID();
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-  // Insert token
+  // Insert token (encrypt token, store email_hash for consistency)
   db.insert(passwordResetTokens)
     .values({
-      email,
-      token,
+      email: emailH, // Store hash instead of plaintext
+      token: encrypt(token), // Encrypt token at rest
       expiresAt: expiresAt.toISOString(),
     })
     .run();
 
   // Send email
   try {
-    await sendPasswordResetEmail(email, token);
+    await sendPasswordResetEmail(decryptedEmail, token);
   } catch (error) {
     console.error("Failed to send password reset email:", error);
     // Still return success to not reveal email existence

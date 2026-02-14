@@ -115,9 +115,14 @@ test.describe('Auth - Logout flow', () => {
     await page.waitForURL('/', { timeout: 10000 });
 
     // Open the user dropdown in the navbar
-    // The dropdown toggle is a button inside nav with the User icon
-    const userMenuButton = page.locator('nav button').filter({ has: page.locator('svg') }).first();
+    // The dropdown toggle is a button inside nav with the ChevronDown icon
+    // We need to wait for it to be visible first
+    const userMenuButton = page.locator('nav button').filter({ hasText: email.split('@')[0] });
+    await userMenuButton.waitFor({ state: 'visible', timeout: 5000 });
     await userMenuButton.click();
+
+    // Wait for the dropdown menu to appear
+    await page.waitForSelector('nav button:has-text("Cerrar sesión"), nav button:has-text("Log out")', { timeout: 5000 });
 
     // Click the logout option (last button in the dropdown, contains LogOut icon)
     const logoutButton = page.locator('nav button').filter({ hasText: /cerrar sesión|logout|log out/i }).first();
