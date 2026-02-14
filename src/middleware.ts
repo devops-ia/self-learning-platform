@@ -1,24 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import type { SessionData } from "@/lib/auth/session";
-import { checkCsrf } from "@/lib/auth/csrf";
+
+// Force Node.js runtime (required for iron-session, better-sqlite3, crypto)
+export const runtime = "nodejs";
 
 // Validate SESSION_SECRET on startup in production
 if (process.env.NODE_ENV === "production") {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret === "dev-secret-change-me-in-production-32chars!!") {
-    console.error(
-      "\x1b[31m[SECURITY FATAL] SESSION_SECRET is not set or using default value.\x1b[0m"
-    );
-    console.error(
-      "\x1b[31mSet a strong, unique SESSION_SECRET environment variable for production.\x1b[0m"
-    );
-    process.exit(1); // Fail startup in production
+    const errorMsg = "[SECURITY FATAL] SESSION_SECRET is not set or using default value. " +
+      "Set a strong, unique SESSION_SECRET environment variable for production.";
+    console.error("\x1b[31m" + errorMsg + "\x1b[0m");
+    throw new Error(errorMsg);
   } else if (secret.length < 32) {
-    console.error(
-      "\x1b[31m[SECURITY FATAL] SESSION_SECRET must be at least 32 characters long.\x1b[0m"
-    );
-    process.exit(1); // Fail startup in production
+    const errorMsg = "[SECURITY FATAL] SESSION_SECRET must be at least 32 characters long.";
+    console.error("\x1b[31m" + errorMsg + "\x1b[0m");
+    throw new Error(errorMsg);
   }
 }
 
@@ -76,6 +74,8 @@ export async function middleware(req: NextRequest) {
 
   // CSRF protection (opt-in via env var for gradual rollout)
   if (process.env.CSRF_PROTECTION_ENABLED === "true") {
+    // Dynamic import to avoid loading crypto in Edge Runtime during build
+    const { checkCsrf } = await import("@/lib/auth/csrf");
     const csrfCheck = await checkCsrf(req);
     if (!csrfCheck.valid) {
       return NextResponse.json(
