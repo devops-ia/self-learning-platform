@@ -54,7 +54,7 @@ demo/
 | 1 | Indentation error | Unused variable | NullPointerException | Easy | 10-15 min |
 | 2 | Mutable default arg | Nil pointer dereference | equals/hashCode contract | Easy | 10-15 min |
 | 3 | Silent except:pass | Goroutine leak | Resource leak (BufferedReader) | Medium | 15-20 min |
-| 4 | __eq__ without __hash__ | Concurrent map race | ConcurrentModificationException | Hard | 20-25 min |
+| 4 | **eq** without **hash** | Concurrent map race | ConcurrentModificationException | Hard | 20-25 min |
 
 ## Quick Start
 
@@ -108,6 +108,7 @@ npm run exercises:import
 ```
 
 Expected output:
+
 ```
 Importing exercises from YAML into database...
 
@@ -160,11 +161,13 @@ The platform is now running at `http://localhost:3000`.
 ### Junior/Mid-Level Terraform (45-60 min)
 
 Select exercises 1 and 2 (easy). These test:
+
 - Reading and understanding error messages
 - Variable declaration and HCL type system
 - Basic `terraform plan` / `terraform init` workflow
 
 **Suggested flow:**
+
 1. Exercise 1: Undeclared Variables (20-25 min)
 2. Exercise 2: Invalid Count (15-20 min)
 3. Follow-up discussion (10-15 min)
@@ -172,6 +175,7 @@ Select exercises 1 and 2 (easy). These test:
 ### Mid-Level Terraform (60-75 min)
 
 Select exercises 1, 2, and 3. Add backend configuration to test:
+
 - Provider and backend concepts
 - State management understanding
 - Real-world infrastructure setup
@@ -179,6 +183,7 @@ Select exercises 1, 2, and 3. Add backend configuration to test:
 ### Senior Terraform (60-90 min)
 
 Use all 4 exercises. Exercise 4 tests:
+
 - Lifecycle meta-arguments and their interactions
 - Understanding of `prevent_destroy` vs conditional creation
 - `create_before_destroy` patterns for zero-downtime deployments
@@ -186,6 +191,7 @@ Use all 4 exercises. Exercise 4 tests:
 ### Junior/Mid-Level Kubernetes (45-60 min)
 
 Select exercises 1 and 2 (easy). These test:
+
 - Service networking (port vs targetPort)
 - Health probe configuration
 - Basic `kubectl` debugging workflow
@@ -193,6 +199,7 @@ Select exercises 1 and 2 (easy). These test:
 ### Mid-Level Kubernetes (60-75 min)
 
 Select exercises 1, 2, and 3. Add Deployment configuration to test:
+
 - Label selectors and matching
 - Deployment spec requirements
 - Understanding of ReplicaSet management
@@ -200,6 +207,7 @@ Select exercises 1, 2, and 3. Add Deployment configuration to test:
 ### Senior Kubernetes (60-90 min)
 
 Use all 4 exercises. Exercise 4 tests:
+
 - Resource management (requests vs limits)
 - Understanding of OOM behavior
 - QoS classes and scheduling implications
@@ -207,6 +215,7 @@ Use all 4 exercises. Exercise 4 tests:
 ### Junior/Mid-Level Python (45-60 min)
 
 Select exercises 1 and 2 (easy). These test:
+
 - Understanding of indentation as block structure
 - Knowledge of mutable default argument pitfall
 - Basic Python debugging skills
@@ -214,6 +223,7 @@ Select exercises 1 and 2 (easy). These test:
 ### Senior Python (60-90 min)
 
 Use all 4 exercises. Exercises 3-4 test:
+
 - Exception handling best practices (no bare `except: pass`)
 - Python data model (`__eq__`/`__hash__` contract)
 - Deep understanding of hashability and collections
@@ -221,6 +231,7 @@ Use all 4 exercises. Exercises 3-4 test:
 ### Junior/Mid-Level Go (45-60 min)
 
 Select exercises 1 and 2 (easy). These test:
+
 - Go's strict compilation rules (unused variables/imports)
 - Nil safety and zero values
 - Basic `go run` / `go build` workflow
@@ -228,6 +239,7 @@ Select exercises 1 and 2 (easy). These test:
 ### Senior Go (60-90 min)
 
 Use all 4 exercises. Exercises 3-4 test:
+
 - Channel mechanics and goroutine lifecycle
 - Concurrent map access and sync.Mutex usage
 - Understanding of Go's race detector
@@ -235,6 +247,7 @@ Use all 4 exercises. Exercises 3-4 test:
 ### Junior/Mid-Level Java (45-60 min)
 
 Select exercises 1 and 2 (easy). These test:
+
 - NullPointerException handling
 - equals/hashCode contract for collections
 - Basic Java debugging skills
@@ -242,6 +255,7 @@ Select exercises 1 and 2 (easy). These test:
 ### Senior Java (60-90 min)
 
 Use all 4 exercises. Exercises 3-4 test:
+
 - Resource management (try-with-resources)
 - ConcurrentModificationException and iterator safety
 - Understanding of Java collection internals
@@ -249,6 +263,7 @@ Use all 4 exercises. Exercises 3-4 test:
 ### Mixed Interview (DevOps Generalist)
 
 Pick 1 Terraform + 1 Kubernetes exercise:
+
 - **Junior**: tf-01 + k8s-01 (both easy, 40 min)
 - **Mid**: tf-02 + k8s-03 (easy + medium, 50 min)
 - **Senior**: tf-04 + k8s-04 (both hard, 50 min)
@@ -256,6 +271,7 @@ Pick 1 Terraform + 1 Kubernetes exercise:
 ### Mixed Interview (Full-Stack / Backend)
 
 Pick exercises from different language modules:
+
 - **Junior**: py-01 + java-01 (both easy, 40 min)
 - **Mid**: py-03 + go-02 (medium + easy, 50 min)
 - **Senior**: go-04 + java-04 (both hard, 50 min)
@@ -310,6 +326,7 @@ Or use the Admin Panel (Admin → Exercises → Create exercise) to create exerc
 **Option A: YAML + Import**
 
 Add to `exercises/_modules.yaml`:
+
 ```yaml
 modules:
   # ... existing modules ...
@@ -370,18 +387,22 @@ docker run -p 3000:3000 \
 ## Troubleshooting
 
 ### "No modules found"
+
 Run `npm run exercises:import` to load exercises into the database.
 
 ### "Database error" on first run
+
 Run `npm run db:seed` to initialize database tables.
 
 ### Candidate can't log in
+
 - Check Admin → Settings: registration must be OFF, anonymous access must be OFF
 - Verify the candidate account exists in Admin → Users
 - Check the password is correct
 - Check the account is not disabled
 
 ### Exercises not showing for candidate
+
 - Verify exercises are imported: Admin → Exercises should list them
 - Check the module exists: Admin → Modules
 - If anonymous access is OFF, candidate must be logged in

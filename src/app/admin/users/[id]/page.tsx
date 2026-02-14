@@ -74,7 +74,7 @@ export default function EditUserPage({
   }
 
   async function handleResetPassword() {
-    if (newPassword.length < 8) return;
+    if (newPassword.length < 12) return;
     const res = await fetch(`/api/admin/users/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -184,13 +184,13 @@ export default function EditUserPage({
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder={t.auth.newPassword || "New password"}
-              minLength={8}
+              minLength={12}
               className="flex-1 px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded focus:outline-none focus:border-[var(--accent)] text-sm"
             />
             <button
               type="button"
               onClick={handleResetPassword}
-              disabled={newPassword.length < 8}
+              disabled={newPassword.length < 12}
               className="px-4 py-2 bg-[var(--accent)] text-white rounded hover:bg-[var(--accent-hover)] transition-colors text-sm disabled:opacity-50"
             >
               {t.profile.save || "Save"}

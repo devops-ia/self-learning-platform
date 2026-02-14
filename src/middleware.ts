@@ -39,22 +39,26 @@ function addSecurityHeaders(res: NextResponse) {
 
   // Content Security Policy
   // Note: 'unsafe-eval' required for Monaco Editor, 'unsafe-inline' for styles
+  // In development/test, Next.js requires 'unsafe-inline' for hydration scripts
+  const isProd = process.env.NODE_ENV === "production";
   const cspDirectives = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval'", // unsafe-eval needed for Monaco Editor
+    isProd
+      ? "script-src 'self' 'unsafe-eval'" // Production: strict CSP
+      : "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Dev/Test: allow inline scripts for Next.js hydration
     "style-src 'self' 'unsafe-inline'", // unsafe-inline needed for Tailwind and component styles
     "img-src 'self' data: https:", // data: for base64 images, https: for avatars
     "font-src 'self' data:",
-    "connect-src 'self'",
+    isProd ? "connect-src 'self'" : "connect-src 'self' ws: wss:", // Dev: allow webpack HMR websockets
     "frame-ancestors 'none'", // Same as X-Frame-Options: DENY
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
-    "upgrade-insecure-requests",
   ];
 
-  // Only add HSTS in production with HTTPS
-  if (process.env.NODE_ENV === "production") {
+  // Only add upgrade-insecure-requests and HSTS in production
+  if (isProd) {
+    cspDirectives.push("upgrade-insecure-requests");
     res.headers.set(
       "Strict-Transport-Security",
       "max-age=31536000; includeSubDomains; preload"

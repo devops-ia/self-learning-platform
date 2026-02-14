@@ -84,7 +84,7 @@ export default function SecurityPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder={t.profile.newPassword}
               required
-              minLength={8}
+              minLength={12}
               className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded focus:outline-none focus:border-[var(--accent)]"
             />
             <input
@@ -93,7 +93,7 @@ export default function SecurityPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder={t.profile.confirmPassword}
               required
-              minLength={8}
+              minLength={12}
               className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded focus:outline-none focus:border-[var(--accent)]"
             />
             <button

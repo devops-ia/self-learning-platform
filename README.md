@@ -186,7 +186,7 @@ docker restart learning-platform
 | [docs/configuration.md](docs/configuration.md) | Environment variables and configuration |
 | [docs/database.md](docs/database.md) | Database configuration and migration |
 | [docs/exercises.md](docs/exercises.md) | Creating and importing exercises |
-| [docs/interview-guide.md](docs/interview-guide.md) | Conducting technical interviews with the platform |
+| [docs/demo.md](docs/demo.md) | Demo instructions and sample exercises |
 | [docs/development.md](docs/development.md) | Development setup and contribution guidelines |
 | [docs/production.md](docs/production.md) | Deploying to production environments |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
