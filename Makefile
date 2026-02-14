@@ -1,4 +1,4 @@
-.PHONY: install dev build lint seed import test docker-build docker-run docker-stop docker-logs docker-clean docker-shell docker-db-backup docker-db-restore compose-up compose-down compose-logs compose-restart compose-clean help
+.PHONY: install dev build lint seed import test clean clean-db clean-all clean-deps docker-build docker-run docker-stop docker-logs docker-clean docker-shell docker-db-backup docker-db-restore compose-up compose-down compose-logs compose-restart compose-clean help
 
 help:
 	@echo "Development Commands"
@@ -10,6 +10,13 @@ help:
 	@echo "make seed                 - Create/reset database tables"
 	@echo "make import               - Import YAML exercises into database"
 	@echo "make test                 - Run tests (placeholder)"
+	@echo ""
+	@echo "Cleanup Commands"
+	@echo "================"
+	@echo "make clean                - Clean build artifacts and temp files (safe)"
+	@echo "make clean-db             - Clean database only"
+	@echo "make clean-all            - Clean everything including DB (with confirmation)"
+	@echo "make clean-deps           - Remove node_modules (with confirmation)"
 	@echo ""
 	@echo "Docker CLI Commands"
 	@echo "===================="
@@ -55,6 +62,43 @@ import:
 
 test:
 	@echo "No test runner configured yet"
+
+# Cleanup Commands
+clean:
+	@echo "Cleaning build artifacts and temp files..."
+	rm -rf .next
+	rm -rf out
+	rm -rf coverage
+	rm -f *.tsbuildinfo
+	find . -name ".DS_Store" -type f -delete
+	@echo "Clean complete (database preserved)"
+
+clean-db:
+	@echo "Cleaning database..."
+	rm -rf data
+	@echo "Database removed"
+
+clean-all:
+	@echo "This will remove ALL build artifacts, temp files, AND the database!"
+	@read -p "Are you sure? (y/N): " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		rm -rf .next out coverage data backups; \
+		rm -f *.tsbuildinfo; \
+		find . -name ".DS_Store" -type f -delete; \
+		echo "All temp data removed"; \
+	else \
+		echo "Cancelled"; \
+	fi
+
+clean-deps:
+	@echo "This will remove node_modules (requires reinstall)!"
+	@read -p "Are you sure? (y/N): " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		rm -rf node_modules; \
+		echo "Dependencies removed. Run 'make install' to reinstall"; \
+	else \
+		echo "Cancelled"; \
+	fi
 
 # Docker CLI Commands
 docker-build:
