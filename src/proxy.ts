@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 import type { SessionData } from "@/lib/auth/session";
 
-// Force Node.js runtime (required for iron-session, better-sqlite3, crypto)
-export const runtime = "nodejs";
-
 // Validate SESSION_SECRET on startup in production
 if (process.env.NODE_ENV === "production") {
   const secret = process.env.SESSION_SECRET;
@@ -70,7 +67,7 @@ function addSecurityHeaders(res: NextResponse) {
   return res;
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
 
   // Add security headers to all matched routes
