@@ -164,7 +164,11 @@ export function evaluateCheck(check: Check, code: string): boolean {
       const result = safeEval(check.custom, code);
       // Custom code can return: boolean, or {passed: boolean, ...}
       if (typeof result === "boolean") return result;
-      if (result && typeof result === "object" && "passed" in result) return result.passed;
+      if (result && typeof result === "object" && "passed" in result) {
+        return typeof (result as { passed: unknown }).passed === "boolean"
+          ? (result as { passed: boolean }).passed
+          : !!(result as { passed: unknown }).passed;
+      }
       return !!result;
     } catch {
       return false;
@@ -182,7 +186,13 @@ function executeCustomValidation(customCode: string, code: string): ValidationRe
     // Execute with safe evaluation
     const result = safeEval(customCode, code);
     if (result && typeof result === "object" && "passed" in result) {
-      return result as ValidationResult;
+      const typedResult = result as { passed: unknown; errorMessage?: unknown };
+      return {
+        passed: typeof typedResult.passed === "boolean" ? typedResult.passed : !!typedResult.passed,
+        ...(typedResult.errorMessage && typeof typedResult.errorMessage === "string"
+          ? { errorMessage: typedResult.errorMessage }
+          : {})
+      };
     }
     return { passed: !!result };
   } catch (e) {
