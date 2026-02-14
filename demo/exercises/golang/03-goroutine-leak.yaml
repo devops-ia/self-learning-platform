@@ -1,0 +1,148 @@
+id: "go-03-goroutine-leak"
+title: "Fuga de goroutines"
+briefing: "El programa lanza 3 goroutines que envian resultados por un canal, pero solo lee un resultado. Las 2 goroutines restantes quedan bloqueadas para siempre intentando escribir en el canal, causando una fuga de goroutines."
+prerequisites: []
+language: "go"
+difficulty: "medium"
+initialCode: |
+  package main
+
+  import (
+  	"fmt"
+  	"time"
+  )
+
+  func fetchURL(url string, results chan string) {
+  	time.Sleep(100 * time.Millisecond)
+  	results <- fmt.Sprintf("fetched %s", url)
+  }
+
+  func main() {
+  	urls := []string{
+  		"https://api.example.com/users",
+  		"https://api.example.com/posts",
+  		"https://api.example.com/comments",
+  	}
+
+  	results := make(chan string)
+
+  	for _, url := range urls {
+  		go fetchURL(url, results)
+  	}
+
+  	fmt.Println(<-results)
+  	fmt.Println("Done!")
+  }
+
+hints:
+  - "Lanzas 3 goroutines que envian datos al canal `results`, pero solo lees un valor con `<-results`. Las otras 2 goroutines se quedan bloqueadas en el send para siempre."
+  - "Necesitas leer del canal tantas veces como goroutines envian. Puedes usar un bucle `for range urls` para leer todos los resultados, o usar un canal con buffer (`make(chan string, len(urls))`)."
+  - "Solucion: reemplaza el unico `fmt.Println(<-results)` con un bucle:\n  for range urls {\n    fmt.Println(<-results)\n  }\nO usa un canal con buffer: `results := make(chan string, len(urls))`."
+successMessage: |
+  !Correcto! Todas las goroutines terminan correctamente sin fugas.
+
+  Lo que aprendiste:
+  - Un canal sin buffer bloquea al emisor hasta que alguien lee el valor
+  - Si no lees todos los valores enviados, las goroutines emisoras quedan bloqueadas para siempre
+  - Las fugas de goroutines consumen memoria y pueden causar deadlocks
+  - Soluciones: leer todos los valores, usar canales con buffer, o usar sync.WaitGroup
+  - En produccion, usa `context.Context` para cancelar goroutines que ya no se necesitan
+
+i18n:
+  en:
+    title: "Goroutine leak"
+    briefing: "The program launches 3 goroutines that send results through a channel, but only reads one result. The remaining 2 goroutines stay blocked forever trying to write to the channel, causing a goroutine leak."
+    hints:
+      - "You launch 3 goroutines that send data to the `results` channel, but only read one value with `<-results`. The other 2 goroutines stay blocked on the send forever."
+      - "You need to read from the channel as many times as goroutines send. You can use a `for range urls` loop to read all results, or use a buffered channel (`make(chan string, len(urls))`)."
+      - "Solution: replace the single `fmt.Println(<-results)` with a loop:\n  for range urls {\n    fmt.Println(<-results)\n  }\nOr use a buffered channel: `results := make(chan string, len(urls))`."
+    successMessage: |
+      Correct! All goroutines finish properly without leaks.
+
+      What you learned:
+      - An unbuffered channel blocks the sender until someone reads the value
+      - If you don't read all sent values, the sending goroutines stay blocked forever
+      - Goroutine leaks consume memory and can cause deadlocks
+      - Solutions: read all values, use buffered channels, or use sync.WaitGroup
+      - In production, use `context.Context` to cancel goroutines that are no longer needed
+
+validations:
+  - type: syntax
+    errorMessage: "El codigo debe contener el paquete main."
+    check:
+      contains: "package main"
+    failMessage: |
+      Error: expected 'package', found 'EOF'
+
+      Todo programa Go debe comenzar con `package main`.
+
+  - type: syntax
+    errorMessage: "El codigo debe tener una funcion main."
+    check:
+      contains: "func main()"
+    failMessage: |
+      Error: runtime.main_main: function main is undeclared in the main package
+
+  - type: semantic
+    errorMessage: "Debes leer todos los resultados del canal o usar un canal con buffer."
+    check:
+      any:
+        - match: "for\\s+.*range\\s+urls"
+        - match: "for\\s+.*:=\\s*0.*<\\s*(len\\(urls\\)|3)"
+        - match: "make\\(chan\\s+string\\s*,\\s*(len\\(urls\\)|3)\\)"
+        - custom: |
+            const receiveCount = (code.match(/<-results/g) || []).length;
+            if (receiveCount >= 3) return { passed: true };
+            return { passed: false, errorMessage: "Solo lees del canal una vez pero 3 goroutines envian. Necesitas leer los 3 resultados." };
+    failMessage: |
+      Solo se lee un resultado del canal, pero se lanzan 3 goroutines. Las 2 goroutines restantes quedaran bloqueadas para siempre causando una fuga.
+
+      Lee todos los resultados con un bucle o usa un canal con buffer.
+
+  - type: intention
+    errorMessage: "Los 3 resultados deben imprimirse o procesarse."
+    check:
+      custom: |
+        const hasLoop = /for\s+.*range\s+urls|for\s+.*:=\s*0.*<\s*(len\(urls\)|3)/.test(code);
+        const hasBuffered = /make\(chan\s+string\s*,\s*(len\(urls\)|3)\)/.test(code);
+        const multipleReads = ((code.match(/<-results/g) || []).length) >= 3;
+        if (hasLoop || hasBuffered || multipleReads) return { passed: true };
+        return {
+          passed: false,
+          errorMessage: "Asegurate de que los 3 resultados se procesan. Usa un bucle `for range urls` para leer del canal o un canal con buffer."
+        };
+    failMessage: |
+      El programa debe procesar los 3 resultados de las URLs.
+
+terminalCommands:
+  "go run main.go":
+    - when:
+        custom: |
+          const hasLoop = /for\s+.*range\s+urls|for\s+.*:=\s*0.*<\s*(len\(urls\)|3)/.test(code);
+          const hasBuffered = /make\(chan\s+string\s*,\s*(len\(urls\)|3)\)/.test(code);
+          const multipleReads = ((code.match(/<-results/g) || []).length) >= 3;
+          return !(hasLoop || hasBuffered || multipleReads);
+      output: |
+        fetched https://api.example.com/users
+        Done!
+
+        Warning: 2 goroutines still running (potential goroutine leak).
+        The program exited but 2 goroutines are blocked on channel send.
+      exitCode: 0
+
+    - output: |
+        fetched https://api.example.com/users
+        fetched https://api.example.com/posts
+        fetched https://api.example.com/comments
+        Done!
+      exitCode: 0
+
+  "go build":
+    - output: |
+        Build successful.
+      exitCode: 0
+
+  "go vet":
+    - output: |
+        No issues found.
+      exitCode: 0

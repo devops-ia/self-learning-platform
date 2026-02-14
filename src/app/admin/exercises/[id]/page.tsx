@@ -32,7 +32,9 @@ export default function EditExercisePage({
   const [successMessage, setSuccessMessage] = useState("");
   const [validations, setValidations] = useState("[]");
   const [terminalCommands, setTerminalCommands] = useState("{}");
+  const [difficulty, setDifficulty] = useState("");
   const [sortOrder, setSortOrder] = useState(0);
+  const [moduleExercises, setModuleExercises] = useState<{id: string; title: string}[]>([]);
 
   useEffect(() => {
     fetch("/api/admin/modules")
@@ -54,11 +56,26 @@ export default function EditExercisePage({
         setSuccessMessage(data.successMessage || "");
         setValidations(JSON.stringify(data.validations || [], null, 2));
         setTerminalCommands(JSON.stringify(data.terminalCommands || {}, null, 2));
+        setDifficulty(data.difficulty || "");
         setSortOrder(data.sortOrder || 0);
         setLoaded(true);
       })
       .catch(() => {});
   }, [id]);
+
+  useEffect(() => {
+    if (!moduleId) return;
+    fetch(`/api/admin/exercises?module=${moduleId}`)
+      .then(r => r.json())
+      .then(data => {
+        setModuleExercises(
+          (data.exercises || [])
+            .filter((e: {id: string; title: string}) => e.id !== id)
+            .map((e: {id: string; title: string}) => ({ id: e.id, title: e.title }))
+        );
+      })
+      .catch(() => {});
+  }, [moduleId, id]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -77,6 +94,7 @@ export default function EditExercisePage({
         successMessage,
         validations: JSON.parse(validations),
         terminalCommands: JSON.parse(terminalCommands),
+        difficulty: difficulty || null,
         sortOrder,
       };
 
@@ -163,6 +181,22 @@ export default function EditExercisePage({
 
         <div>
           <label className="block text-sm font-medium mb-1 text-[var(--muted)]">
+            {t.difficulty?.none || "Difficulty"}
+          </label>
+          <select
+            value={difficulty}
+            onChange={(e) => setDifficulty(e.target.value)}
+            className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded focus:outline-none focus:border-[var(--accent)]"
+          >
+            <option value="">{t.difficulty?.none || "No difficulty"}</option>
+            <option value="easy">{t.difficulty?.easy || "Easy"}</option>
+            <option value="medium">{t.difficulty?.medium || "Medium"}</option>
+            <option value="hard">{t.difficulty?.hard || "Hard"}</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1 text-[var(--muted)]">
             {t.adminPanel.moduleTitle}
           </label>
           <input
@@ -209,14 +243,36 @@ export default function EditExercisePage({
 
         <div>
           <label className="block text-sm font-medium mb-1 text-[var(--muted)]">
-            Prerequisites (JSON)
+            Prerequisites
           </label>
-          <textarea
-            value={prerequisites}
-            onChange={(e) => setPrerequisites(e.target.value)}
-            rows={2}
-            className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded focus:outline-none focus:border-[var(--accent)] font-mono text-sm"
-          />
+          <div className="border border-[var(--border)] rounded p-3 max-h-48 overflow-y-auto space-y-2 bg-[var(--surface)]">
+            {moduleExercises.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">No other exercises in this module</p>
+            ) : (
+              moduleExercises.map((ex) => {
+                const prereqs: string[] = (() => { try { return JSON.parse(prerequisites); } catch { return []; } })();
+                const checked = prereqs.includes(ex.id);
+                return (
+                  <label key={ex.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-[var(--surface-hover)] rounded p-1">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        const current: string[] = (() => { try { return JSON.parse(prerequisites); } catch { return []; } })();
+                        const updated = checked
+                          ? current.filter(p => p !== ex.id)
+                          : [...current, ex.id];
+                        setPrerequisites(JSON.stringify(updated));
+                      }}
+                      className="rounded"
+                    />
+                    <span className="font-mono text-xs text-[var(--muted)]">{ex.id}</span>
+                    <span>{ex.title}</span>
+                  </label>
+                );
+              })
+            )}
+          </div>
         </div>
 
         <div>

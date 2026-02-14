@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logAudit } from "@/lib/auth/audit";
+import { safeDecrypt, encrypt } from "@/lib/crypto";
 
 export async function GET(
   _req: NextRequest,
@@ -25,6 +26,7 @@ export async function GET(
       updatedAt: users.updatedAt,
       totpEnabled: users.totpEnabled,
       emailVerified: users.emailVerified,
+      disabled: users.disabled,
       avatarUrl: users.avatarUrl,
     })
     .from(users)
@@ -35,13 +37,22 @@ export async function GET(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ user });
+  return NextResponse.json({
+    user: {
+      ...user,
+      email: safeDecrypt(user.email),
+      displayName: safeDecrypt(user.displayName),
+    },
+  });
 }
 
 const updateUserSchema = z.object({
   role: z.enum(["admin", "user"]).optional(),
   displayName: z.string().min(1).max(100).optional(),
   username: z.string().min(2).max(50).optional(),
+  password: z.string().min(8).optional(),
+  disabled: z.boolean().optional(),
+  emailVerified: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -66,10 +77,16 @@ export async function PATCH(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const updates: Record<string, string> = { updatedAt: new Date().toISOString() };
+  const updates: Record<string, string | boolean | number> = { updatedAt: new Date().toISOString() };
   if (parsed.data.role !== undefined) updates.role = parsed.data.role;
-  if (parsed.data.displayName !== undefined) updates.displayName = parsed.data.displayName;
+  if (parsed.data.displayName !== undefined) updates.displayName = encrypt(parsed.data.displayName);
   if (parsed.data.username !== undefined) updates.username = parsed.data.username;
+  if (parsed.data.password !== undefined) {
+    const { hashPassword } = await import("@/lib/auth/password");
+    updates.passwordHash = await hashPassword(parsed.data.password);
+  }
+  if (parsed.data.disabled !== undefined) updates.disabled = parsed.data.disabled;
+  if (parsed.data.emailVerified !== undefined) updates.emailVerified = parsed.data.emailVerified;
 
   db.update(users).set(updates).where(eq(users.id, id)).run();
 

@@ -1,0 +1,143 @@
+# =============================================================================
+# Exercise 1: NullPointerException (Easy)
+# =============================================================================
+# Interview scenario: The candidate must identify that getConfig("timeout")
+# returns null because the key doesn't exist in the map, and calling .length()
+# on null causes a NullPointerException. The fix requires adding a null check
+# before accessing the method.
+# =============================================================================
+
+id: "java-01-null-pointer"
+title: "NullPointerException al acceder a valor inexistente"
+briefing: "Este programa lee valores de un mapa de configuracion. La clave 'host' existe, pero 'timeout' no esta definida, por lo que getConfig devuelve null. Al llamar a .length() sobre null se produce un NullPointerException. Anade una comprobacion de null antes de usar la variable timeout."
+prerequisites: []
+language: "java"
+difficulty: "easy"
+initialCode: |
+  import java.util.HashMap;
+  import java.util.Map;
+
+  public class Main {
+      static Map<String, String> config = new HashMap<>();
+
+      static {
+          config.put("host", "localhost");
+          config.put("port", "8080");
+      }
+
+      public static String getConfig(String key) {
+          return config.get(key);
+      }
+
+      public static void main(String[] args) {
+          String host = getConfig("host");
+          String timeout = getConfig("timeout");
+
+          System.out.println("Host: " + host);
+          System.out.println("Timeout length: " + timeout.length());
+      }
+  }
+hints:
+  - "Fijate en que getConfig('timeout') devuelve null porque la clave 'timeout' no existe en el mapa. Llamar a .length() sobre null lanza NullPointerException."
+  - "Necesitas comprobar si timeout es null antes de llamar a .length(). Puedes usar un if (timeout != null) o un operador ternario."
+  - "Solucion: envuelve la llamada en una comprobacion como if (timeout != null) { ... } else { System.out.println('Timeout no configurado'); }, o usa un valor por defecto con un ternario."
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - Map.get() devuelve null cuando la clave no existe, no lanza una excepcion
+  - Llamar a cualquier metodo sobre una referencia null produce NullPointerException
+  - Siempre debes comprobar null antes de operar con valores que pueden no existir
+  - Alternativas modernas: Optional.ofNullable(), Map.getOrDefault(), Map.containsKey()
+  - En entrevistas, el manejo de null es uno de los errores mas evaluados en Java
+
+i18n:
+  en:
+    title: "NullPointerException on missing map value"
+    briefing: "This program reads values from a configuration map. The key 'host' exists, but 'timeout' is not defined, so getConfig returns null. Calling .length() on null causes a NullPointerException. Add a null check before using the timeout variable."
+    hints:
+      - "Notice that getConfig('timeout') returns null because the key 'timeout' doesn't exist in the map. Calling .length() on null throws a NullPointerException."
+      - "You need to check if timeout is null before calling .length(). You can use an if (timeout != null) or a ternary operator."
+      - "Solution: wrap the call in a check like if (timeout != null) { ... } else { System.out.println('Timeout not configured'); }, or use a default value with a ternary."
+    successMessage: |
+      Correct!
+
+      What you learned:
+      - Map.get() returns null when the key doesn't exist, it doesn't throw an exception
+      - Calling any method on a null reference produces a NullPointerException
+      - You should always check for null before operating on values that might not exist
+      - Modern alternatives: Optional.ofNullable(), Map.getOrDefault(), Map.containsKey()
+      - In interviews, null handling is one of the most commonly evaluated Java mistakes
+
+validations:
+  - type: syntax
+    errorMessage: "El codigo debe compilar correctamente."
+    check:
+      contains: "public class Main"
+    failMessage: |
+      Main.java:1: error: class Main is public, should be declared in a file named Main.java
+
+      La clase principal debe llamarse Main y ser publica.
+
+  - type: semantic
+    errorMessage: "Debes comprobar si timeout es null antes de llamar a .length()."
+    check:
+      custom: |
+        const hasNullCheck = /timeout\s*!=\s*null/.test(code) ||
+                             /timeout\s*==\s*null/.test(code) ||
+                             /null\s*!=\s*timeout/.test(code) ||
+                             /null\s*==\s*timeout/.test(code) ||
+                             /Optional/.test(code) ||
+                             /getOrDefault/.test(code);
+        if (!hasNullCheck) {
+          return {
+            passed: false,
+            errorMessage: "No se detecta una comprobacion de null para la variable timeout. Sin ella, se producira un NullPointerException cuando la clave no exista en el mapa."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      Debes anadir una comprobacion de null para timeout antes de llamar a .length().
+      Puedes usar if (timeout != null), Optional, o getOrDefault.
+
+  - type: intention
+    errorMessage: "No debes llamar a .length() directamente sobre timeout sin proteccion."
+    check:
+      custom: |
+        const directCall = /timeout\.length\(\)/.test(code);
+        const hasNullCheck = /timeout\s*!=\s*null/.test(code) ||
+                             /timeout\s*==\s*null/.test(code) ||
+                             /null\s*!=\s*timeout/.test(code) ||
+                             /null\s*==\s*timeout/.test(code) ||
+                             /Optional/.test(code) ||
+                             /getOrDefault/.test(code);
+        if (directCall && !hasNullCheck) {
+          return {
+            passed: false,
+            errorMessage: "Sigues llamando a timeout.length() sin comprobar null. Recuerda que getConfig('timeout') devuelve null."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      La llamada timeout.length() sin comprobacion de null causara NullPointerException.
+
+terminalCommands:
+  "javac Main.java && java Main":
+    - when:
+        custom: |
+          const hasNullCheck = /timeout\s*!=\s*null/.test(code) ||
+                               /timeout\s*==\s*null/.test(code) ||
+                               /null\s*!=\s*timeout/.test(code) ||
+                               /null\s*==\s*timeout/.test(code) ||
+                               /Optional/.test(code) ||
+                               /getOrDefault/.test(code);
+          return !hasNullCheck;
+      output: |
+        Host: localhost
+        Exception in thread "main" java.lang.NullPointerException: Cannot invoke "String.length()" because "timeout" is null
+        	at Main.main(Main.java:22)
+      exitCode: 1
+    - output: |
+        Host: localhost
+        Timeout not configured (null)
+      exitCode: 0

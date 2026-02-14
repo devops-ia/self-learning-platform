@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { CheckCircle, XCircle, Lightbulb, Loader2 } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const CodeEditor = dynamic(() => import("@/components/editor/CodeEditor"), {
   ssr: false,
@@ -47,9 +48,14 @@ export default function LabLayout({
   onComplete,
 }: LabLayoutProps) {
   const { lang, t } = useT();
+  const { user } = useAuth();
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [failureCount, setFailureCount] = useState(0);
+  const [failureCount, setFailureCount] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    const stored = localStorage.getItem(`devops-lab-failures-${exerciseId}`);
+    return stored ? parseInt(stored, 10) || 0 : 0;
+  });
   const codeRef = useRef(initialCode);
 
   const handleCodeChange = useCallback((value: string) => {
@@ -59,7 +65,7 @@ export default function LabLayout({
   const handleValidate = async () => {
     setIsValidating(true);
     try {
-      const userId = getOrCreateUserId();
+      const userId = user?.id;
       const res = await fetch("/api/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,11 +86,15 @@ export default function LabLayout({
       });
 
       if (!data.passed) {
-        setFailureCount((c) => c + 1);
+        setFailureCount((c) => {
+          const next = c + 1;
+          localStorage.setItem(`devops-lab-failures-${exerciseId}`, String(next));
+          return next;
+        });
       } else {
         onComplete();
       }
-    } catch (_e) {
+    } catch {
       setFeedback({
         passed: false,
         summary: t.lab.validationError,
@@ -168,14 +178,4 @@ export default function LabLayout({
       </div>
     </div>
   );
-}
-
-function getOrCreateUserId(): string {
-  if (typeof window === "undefined") return "anonymous";
-  let userId = localStorage.getItem("devops-lab-user-id");
-  if (!userId) {
-    userId = crypto.randomUUID();
-    localStorage.setItem("devops-lab-user-id", userId);
-  }
-  return userId;
 }

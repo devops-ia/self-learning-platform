@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 type Theme = "dark" | "light";
 
@@ -29,8 +30,10 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [theme, setTheme] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
+  const appliedUserPref = useRef(false);
 
   useEffect(() => {
     const initial = getInitialTheme();
@@ -39,16 +42,37 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
+  // When user loads with DB preference, apply it (once)
+  useEffect(() => {
+    if (user?.preferences?.theme && (user.preferences.theme === "dark" || user.preferences.theme === "light") && !appliedUserPref.current) {
+      appliedUserPref.current = true;
+      const t = user.preferences.theme as Theme;
+      setTheme(t);
+      localStorage.setItem(STORAGE_KEY, t);
+      applyTheme(t);
+    }
+    if (!user) {
+      appliedUserPref.current = false;
+    }
+  }, [user]);
+
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = prev === "dark" ? "light" : "dark";
       localStorage.setItem(STORAGE_KEY, next);
       applyTheme(next);
+      // Save to DB if logged in
+      if (user) {
+        fetch("/api/auth/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ theme: next }),
+        }).catch(() => {});
+      }
       return next;
     });
-  }, []);
+  }, [user]);
 
-  // Avoid flash of wrong theme before hydration
   if (!mounted) return <>{children}</>;
 
   return (

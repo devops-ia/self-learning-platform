@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import LabLayout from "@/components/lab/LabLayout";
 import { useT } from "@/lib/i18n/context";
+import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
 
 interface ExerciseMetadata {
   title: string;
@@ -21,6 +22,7 @@ export default function DynamicExercisePage({
 }) {
   const { module, exerciseId } = use(params);
   const { lang, t } = useT();
+  const { loading: authLoading } = useRequireAuth();
   const router = useRouter();
   const [exercise, setExercise] = useState<ExerciseMetadata | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,7 @@ export default function DynamicExercisePage({
       .finally(() => setLoading(false));
   }, [exerciseId]);
 
-  if (loading) return null;
+  if (authLoading || loading) return null;
 
   if (notFound || !exercise) {
     return (

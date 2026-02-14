@@ -28,6 +28,8 @@ const updateModuleSchema = z.object({
   icon: z.string().optional(),
   prefix: z.string().min(1).max(10).optional(),
   language: z.string().optional(),
+  showDifficulty: z.boolean().optional(),
+  image: z.string().max(700_000).nullable().optional(),
   sortOrder: z.number().int().optional(),
 });
 
@@ -57,6 +59,8 @@ export async function PATCH(
   if (parsed.data.icon !== undefined) updates.icon = parsed.data.icon;
   if (parsed.data.prefix !== undefined) updates.prefix = parsed.data.prefix;
   if (parsed.data.language !== undefined) updates.language = parsed.data.language;
+  if (parsed.data.showDifficulty !== undefined) updates.showDifficulty = parsed.data.showDifficulty;
+  if (parsed.data.image !== undefined) updates.image = parsed.data.image;
   if (parsed.data.sortOrder !== undefined) updates.sortOrder = parsed.data.sortOrder;
 
   if (Object.keys(updates).length > 0) {

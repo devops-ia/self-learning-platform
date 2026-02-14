@@ -6,12 +6,12 @@ import {
   type VerifiedRegistrationResponse,
   type VerifiedAuthenticationResponse,
 } from "@simplewebauthn/server";
+import { getBaseUrl } from "@/lib/settings";
 
 type AuthenticatorTransportFuture = "ble" | "cable" | "hybrid" | "internal" | "nfc" | "smart-card" | "usb";
 
 const RP_NAME = "DevOps Learning Platform";
 const RP_ID = process.env.WEBAUTHN_RP_ID || "localhost";
-const ORIGIN = process.env.BASE_URL || "http://localhost:3000";
 
 export interface StoredPasskey {
   credentialId: string;
@@ -38,7 +38,8 @@ export async function generatePasskeyRegistrationOptions(
         : undefined,
     })),
     authenticatorSelection: {
-      residentKey: "preferred",
+      authenticatorAttachment: "platform",
+      residentKey: "required",
       userVerification: "preferred",
     },
   });
@@ -47,27 +48,20 @@ export async function generatePasskeyRegistrationOptions(
 export async function verifyPasskeyRegistration(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   response: any,
-  expectedChallenge: string
+  expectedChallenge: string,
+  origin?: string
 ): Promise<VerifiedRegistrationResponse> {
   return verifyRegistrationResponse({
     response,
     expectedChallenge,
-    expectedOrigin: ORIGIN,
+    expectedOrigin: origin || getBaseUrl(),
     expectedRPID: RP_ID,
   });
 }
 
-export async function generatePasskeyAuthOptions(
-  existingPasskeys: StoredPasskey[]
-) {
+export async function generatePasskeyAuthOptions() {
   return generateAuthenticationOptions({
     rpID: RP_ID,
-    allowCredentials: existingPasskeys.map((pk) => ({
-      id: pk.credentialId,
-      transports: pk.transports
-        ? (JSON.parse(pk.transports) as AuthenticatorTransportFuture[])
-        : undefined,
-    })),
     userVerification: "preferred",
   });
 }
@@ -76,12 +70,13 @@ export async function verifyPasskeyAuth(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   response: any,
   expectedChallenge: string,
-  passkey: StoredPasskey
+  passkey: StoredPasskey,
+  origin?: string
 ): Promise<VerifiedAuthenticationResponse> {
   return verifyAuthenticationResponse({
     response,
     expectedChallenge,
-    expectedOrigin: ORIGIN,
+    expectedOrigin: origin || getBaseUrl(),
     expectedRPID: RP_ID,
     credential: {
       id: passkey.credentialId,

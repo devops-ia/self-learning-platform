@@ -1,8 +1,26 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, GripVertical, Pencil } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface ModuleRow {
   id: string;
@@ -11,7 +29,69 @@ interface ModuleRow {
   icon: string;
   prefix: string;
   language: string;
+  showDifficulty: boolean;
   sortOrder: number;
+}
+
+function SortableModuleRow({
+  module: m,
+  onToggleDifficulty,
+  onDelete,
+}: {
+  module: ModuleRow;
+  onToggleDifficulty: (id: string, current: boolean) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: m.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]"
+    >
+      <td className="py-2 w-8">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-[var(--muted)] hover:text-[var(--foreground)]">
+          <GripVertical className="w-4 h-4" />
+        </button>
+      </td>
+      <td className="py-2 font-mono text-xs">{m.id}</td>
+      <td className="py-2">{m.title}</td>
+      <td className="py-2 text-[var(--muted)]">{m.prefix}</td>
+      <td className="py-2 text-[var(--muted)]">{m.language}</td>
+      <td className="py-2 text-[var(--muted)]">{m.icon}</td>
+      <td className="py-2">
+        <button
+          onClick={() => onToggleDifficulty(m.id, m.showDifficulty)}
+          className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+            m.showDifficulty
+              ? "bg-[var(--accent)]/20 text-[var(--accent)] border-[var(--accent)]/30"
+              : "bg-[var(--surface)] text-[var(--muted)] border-[var(--border)]"
+          }`}
+        >
+          {m.showDifficulty ? "ON" : "OFF"}
+        </button>
+      </td>
+      <td className="py-2 text-[var(--muted)]">{m.sortOrder}</td>
+      <td className="py-2">
+        <div className="flex items-center gap-1">
+          <Link
+            href={`/admin/modules/${m.id}`}
+            className="p-1 text-[var(--muted)] hover:text-[var(--foreground)]"
+          >
+            <Pencil className="w-4 h-4" />
+          </Link>
+          <button
+            onClick={() => onDelete(m.id)}
+            className="p-1 text-[var(--muted)] hover:text-[var(--error)]"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
 }
 
 export default function AdminModulesPage() {
@@ -27,6 +107,11 @@ export default function AdminModulesPage() {
   const [newPrefix, setNewPrefix] = useState("");
   const [newLanguage, setNewLanguage] = useState("yaml");
   const [error, setError] = useState("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const loadModules = useCallback(async () => {
     setLoading(true);
@@ -79,9 +164,35 @@ export default function AdminModulesPage() {
     }
   }
 
+  async function handleToggleDifficulty(id: string, current: boolean) {
+    await fetch(`/api/admin/modules/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ showDifficulty: !current }),
+    });
+    loadModules();
+  }
+
   async function handleDelete(id: string) {
     if (!confirm(t.adminPanel.confirmDeleteModule)) return;
     await fetch(`/api/admin/modules/${id}`, { method: "DELETE" });
+    loadModules();
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = modules.findIndex((m) => m.id === active.id);
+    const newIndex = modules.findIndex((m) => m.id === over.id);
+    const reordered = arrayMove(modules, oldIndex, newIndex);
+    setModules(reordered);
+
+    await fetch("/api/admin/modules/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ moduleIds: reordered.map((m) => m.id) }),
+    });
     loadModules();
   }
 
@@ -175,50 +286,43 @@ export default function AdminModulesPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[var(--border)] text-left text-[var(--muted)]">
+              <th className="pb-2 w-8"></th>
               <th className="pb-2 font-medium">{t.adminPanel.moduleId}</th>
               <th className="pb-2 font-medium">{t.adminPanel.moduleTitle}</th>
               <th className="pb-2 font-medium">{t.adminPanel.modulePrefix}</th>
               <th className="pb-2 font-medium">{t.adminPanel.moduleLanguage}</th>
               <th className="pb-2 font-medium">{t.adminPanel.moduleIcon}</th>
+              <th className="pb-2 font-medium">{t.difficulty?.showDifficulty || "Difficulty"}</th>
               <th className="pb-2 font-medium">{t.adminPanel.sortOrder}</th>
               <th className="pb-2 font-medium"></th>
             </tr>
           </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="py-8 text-center text-[var(--muted)]">...</td>
-              </tr>
-            ) : modules.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="py-8 text-center text-[var(--muted)]">
-                  {t.adminPanel.noResults}
-                </td>
-              </tr>
-            ) : (
-              modules.map((m) => (
-                <tr
-                  key={m.id}
-                  className="border-b border-[var(--border)] hover:bg-[var(--surface-hover)]"
-                >
-                  <td className="py-2 font-mono text-xs">{m.id}</td>
-                  <td className="py-2">{m.title}</td>
-                  <td className="py-2 text-[var(--muted)]">{m.prefix}</td>
-                  <td className="py-2 text-[var(--muted)]">{m.language}</td>
-                  <td className="py-2 text-[var(--muted)]">{m.icon}</td>
-                  <td className="py-2 text-[var(--muted)]">{m.sortOrder}</td>
-                  <td className="py-2">
-                    <button
-                      onClick={() => handleDelete(m.id)}
-                      className="p-1 text-[var(--muted)] hover:text-[var(--error)]"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={modules.map(m => m.id)} strategy={verticalListSortingStrategy}>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-[var(--muted)]">...</td>
+                  </tr>
+                ) : modules.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-[var(--muted)]">
+                      {t.adminPanel.noResults}
+                    </td>
+                  </tr>
+                ) : (
+                  modules.map((m) => (
+                    <SortableModuleRow
+                      key={m.id}
+                      module={m}
+                      onToggleDifficulty={handleToggleDifficulty}
+                      onDelete={handleDelete}
+                    />
+                  ))
+                )}
+              </tbody>
+            </SortableContext>
+          </DndContext>
         </table>
       </div>
     </div>

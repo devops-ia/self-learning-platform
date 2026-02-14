@@ -12,6 +12,7 @@ export default function LoginPage() {
   const { user, loading } = useAuth();
   const { t } = useT();
   const [oauthProviders, setOauthProviders] = useState<string[]>([]);
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [requires2FA, setRequires2FA] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [totpError, setTotpError] = useState("");
@@ -23,6 +24,10 @@ export default function LoginPage() {
       .then((data) => {
         if (data.oauthProviders) setOauthProviders(data.oauthProviders);
       })
+      .catch(() => {});
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => setRegistrationEnabled(data.registrationEnabled !== false))
       .catch(() => {});
   }, []);
 
@@ -100,6 +105,15 @@ export default function LoginPage() {
           <>
             <LoginForm onRequires2FA={() => setRequires2FA(true)} />
 
+            <div className="text-center">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-[var(--accent)] hover:underline"
+              >
+                {t.auth.forgotPassword}
+              </Link>
+            </div>
+
             <div className="flex items-center gap-3 text-xs text-[var(--muted)]">
               <div className="flex-1 h-px bg-[var(--border)]" />
               {t.auth.or}
@@ -114,12 +128,14 @@ export default function LoginPage() {
           </>
         )}
 
-        <p className="text-center text-sm text-[var(--muted)]">
-          {t.auth.noAccount}{" "}
-          <Link href="/register" className="text-[var(--accent)] hover:underline">
-            {t.auth.register}
-          </Link>
-        </p>
+        {registrationEnabled && (
+          <p className="text-center text-sm text-[var(--muted)]">
+            {t.auth.noAccount}{" "}
+            <Link href="/register" className="text-[var(--accent)] hover:underline">
+              {t.auth.register}
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );

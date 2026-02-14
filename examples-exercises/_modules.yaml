@@ -1,0 +1,30 @@
+# Module configuration for the learning platform
+# Each module defines a technology track with its own set of exercises
+
+modules:
+  terraform:
+    title: "Terraform"
+    description:
+      es: "Aprende a configurar infraestructura como código corrigiendo errores reales de Terraform."
+      en: "Learn to configure infrastructure as code by fixing real Terraform errors."
+    icon: "Terminal"
+    prefix: "tf"
+    language: "hcl"
+
+  kubernetes:
+    title: "Kubernetes"
+    description:
+      es: "Aprende a diagnosticar y corregir problemas comunes en manifiestos de Kubernetes."
+      en: "Learn to diagnose and fix common issues in Kubernetes manifests."
+    icon: "Box"
+    prefix: "k8s"
+    language: "yaml"
+
+  ansible:
+    title: "Ansible"
+    description:
+      es: "Aprende a escribir playbooks de Ansible corrigiendo errores comunes."
+      en: "Learn to write Ansible playbooks by fixing common errors."
+    icon: "Cog"          # lucide-react icon name
+    prefix: "ans"        # ID prefix for exercises
+    language: "yaml"     # default language for the module

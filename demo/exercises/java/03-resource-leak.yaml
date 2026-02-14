@@ -1,0 +1,186 @@
+# =============================================================================
+# Exercise 3: Resource Leak (Medium)
+# =============================================================================
+# Interview scenario: The candidate must identify that the BufferedReader is
+# opened but never closed. If an exception occurs during reading, the file
+# handle leaks. The fix is to use try-with-resources, which guarantees the
+# resource is closed even if an exception is thrown.
+# =============================================================================
+
+id: "java-03-resource-leak"
+title: "Fuga de recursos: BufferedReader sin cerrar"
+briefing: "El metodo readLines abre un BufferedReader pero nunca lo cierra. Si ocurre una excepcion durante la lectura, el descriptor de fichero queda abierto (resource leak). En aplicaciones de larga duracion esto agota los descriptores del sistema operativo. Usa try-with-resources para garantizar que el reader se cierre automaticamente."
+prerequisites: []
+language: "java"
+difficulty: "medium"
+initialCode: |
+  import java.io.*;
+  import java.util.ArrayList;
+  import java.util.List;
+
+  public class Main {
+      public static List<String> readLines(String filename) throws IOException {
+          List<String> lines = new ArrayList<>();
+          BufferedReader reader = new BufferedReader(new FileReader(filename));
+          String line;
+          while ((line = reader.readLine()) != null) {
+              lines.add(line.trim());
+          }
+          return lines;
+      }
+
+      public static int countWords(String filename) throws IOException {
+          List<String> lines = readLines(filename);
+          int count = 0;
+          for (String line : lines) {
+              count += line.split("\\s+").length;
+          }
+          return count;
+      }
+
+      public static void main(String[] args) {
+          try {
+              List<String> lines = readLines("data.txt");
+              System.out.println("Lines: " + lines.size());
+              int words = countWords("data.txt");
+              System.out.println("Words: " + words);
+          } catch (IOException e) {
+              System.err.println("Error: " + e.getMessage());
+          }
+      }
+  }
+hints:
+  - "El BufferedReader se crea en la linea 8, pero nunca se llama a reader.close(). Si readLine() lanza una excepcion, el fichero queda abierto indefinidamente."
+  - "Java 7 introdujo try-with-resources: declaras el recurso en el parentesis del try y se cierra automaticamente al salir del bloque, incluso si hay excepcion. Sintaxis: try (BufferedReader reader = new BufferedReader(...)) { ... }"
+  - "Solucion: reemplaza la declaracion del reader por try (BufferedReader reader = new BufferedReader(new FileReader(filename))) { ... } y pon el bucle while dentro del bloque try."
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - Los recursos de I/O (streams, readers, connections) deben cerrarse siempre
+  - Sin cierre explicito, los descriptores de fichero se agotan en aplicaciones de larga duracion
+  - try-with-resources (Java 7+) es la forma idomeatica de garantizar el cierre
+  - Los recursos declarados en try() implementan AutoCloseable y se cierran en orden inverso
+  - Nunca uses reader.close() manual en un finally: try-with-resources es mas seguro y legible
+  - En entrevistas, la gestion de recursos es un tema fundamental de Java
+
+i18n:
+  en:
+    title: "Resource leak: unclosed BufferedReader"
+    briefing: "The readLines method opens a BufferedReader but never closes it. If an exception occurs during reading, the file handle leaks. In long-running applications this exhausts the operating system's file descriptors. Use try-with-resources to guarantee the reader is closed automatically."
+    hints:
+      - "The BufferedReader is created on line 8, but reader.close() is never called. If readLine() throws an exception, the file remains open indefinitely."
+      - "Java 7 introduced try-with-resources: you declare the resource in the try parentheses and it's automatically closed when leaving the block, even if an exception occurs. Syntax: try (BufferedReader reader = new BufferedReader(...)) { ... }"
+      - "Solution: replace the reader declaration with try (BufferedReader reader = new BufferedReader(new FileReader(filename))) { ... } and put the while loop inside the try block."
+    successMessage: |
+      Correct!
+
+      What you learned:
+      - I/O resources (streams, readers, connections) must always be closed
+      - Without explicit closing, file descriptors are exhausted in long-running applications
+      - try-with-resources (Java 7+) is the idiomatic way to guarantee closure
+      - Resources declared in try() implement AutoCloseable and are closed in reverse order
+      - Never use manual reader.close() in a finally block: try-with-resources is safer and more readable
+      - In interviews, resource management is a fundamental Java topic
+
+validations:
+  - type: syntax
+    errorMessage: "El codigo debe compilar correctamente."
+    check:
+      contains: "public class Main"
+    failMessage: |
+      Main.java:1: error: class Main is public, should be declared in a file named Main.java
+
+      La clase principal debe llamarse Main y ser publica.
+
+  - type: semantic
+    errorMessage: "Debes usar try-with-resources para el BufferedReader."
+    check:
+      custom: |
+        const hasTryWithResources = /try\s*\(\s*(BufferedReader|var)\s+\w+\s*=\s*new\s+BufferedReader/.test(code);
+        if (!hasTryWithResources) {
+          return {
+            passed: false,
+            errorMessage: "No se detecta try-with-resources para el BufferedReader. El reader se abre pero nunca se cierra, lo que causa una fuga de recursos. Usa la sintaxis try (BufferedReader reader = ...) { ... }"
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      El BufferedReader debe estar envuelto en un try-with-resources.
+      Sintaxis: try (BufferedReader reader = new BufferedReader(new FileReader(filename))) { ... }
+
+  - type: intention
+    errorMessage: "El bucle de lectura debe estar dentro del bloque try-with-resources."
+    check:
+      custom: |
+        const tryMatch = code.match(/try\s*\([^)]*BufferedReader[^)]*\)\s*\{([\s\S]*?)\}/);
+        if (!tryMatch) {
+          return { passed: false, errorMessage: "No se encuentra un bloque try-with-resources con BufferedReader." };
+        }
+        const tryBody = tryMatch[1];
+        if (!tryBody.includes('readLine')) {
+          return {
+            passed: false,
+            errorMessage: "El bucle while con readLine() debe estar dentro del bloque try-with-resources para que el reader se cierre correctamente."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      El bucle de lectura (readLine) debe estar dentro del bloque try-with-resources
+      para garantizar que el reader se cierra al terminar.
+
+  - type: intention
+    errorMessage: "No deberia haber un reader.close() manual si usas try-with-resources."
+    check:
+      custom: |
+        const hasTryWithResources = /try\s*\([^)]*BufferedReader/.test(code);
+        const hasManualClose = /reader\.close\(\)/.test(code);
+        if (hasTryWithResources && hasManualClose) {
+          return {
+            passed: false,
+            errorMessage: "Si usas try-with-resources no necesitas llamar a reader.close() manualmente. El bloque try se encarga de cerrar el recurso automaticamente."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      Con try-with-resources no es necesario llamar a reader.close() manualmente.
+
+terminalCommands:
+  "javac Main.java && java Main":
+    - when:
+        custom: |
+          return !/try\s*\(\s*(BufferedReader|var)\s+\w+\s*=\s*new\s+BufferedReader/.test(code);
+      output: |
+        Lines: 12
+        Words: 87
+        WARNING: Resource leak detected at Main.readLines(Main.java:8)
+          BufferedReader opened but never closed.
+          In a long-running application, this will exhaust file descriptors.
+
+        $ lsof -p $PID | grep data.txt
+        java    12345 user   3r   REG  253,1  1024  data.txt
+        java    12345 user   4r   REG  253,1  1024  data.txt
+
+        Note: File handle for data.txt leaked twice (readLines called twice).
+        Use try-with-resources to ensure automatic cleanup.
+      exitCode: 0
+    - output: |
+        Lines: 12
+        Words: 87
+
+        All file handles properly closed. No resource leaks detected.
+      exitCode: 0
+
+  "javac -Xlint:all Main.java":
+    - when:
+        custom: |
+          return !/try\s*\(\s*(BufferedReader|var)\s+\w+\s*=\s*new\s+BufferedReader/.test(code);
+      output: |
+        Main.java:8: warning: [try] auto-closeable resource BufferedReader not managed by try-with-resources
+                BufferedReader reader = new BufferedReader(new FileReader(filename));
+                               ^
+        1 warning
+      exitCode: 0
+    - output: |
+        Compilation successful. No warnings.
+      exitCode: 0

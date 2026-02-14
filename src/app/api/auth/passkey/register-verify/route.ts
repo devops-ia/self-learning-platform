@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
   const { response, name } = body;
 
   try {
-    const verification = await verifyPasskeyRegistration(response, challenge);
+    const origin = req.headers.get("origin") || undefined;
+    const verification = await verifyPasskeyRegistration(response, challenge, origin);
 
     if (!verification.verified || !verification.registrationInfo) {
       return NextResponse.json(

@@ -74,6 +74,7 @@ const updateExerciseSchema = z.object({
     hints: z.array(z.string()).optional(),
     successMessage: z.string().optional(),
   })).nullable().optional(),
+  difficulty: z.enum(["easy", "medium", "hard"]).nullable().optional(),
   sortOrder: z.number().int().optional(),
   moduleId: z.string().min(1).optional(),
 });
@@ -110,6 +111,7 @@ export async function PATCH(
   if (d.validations !== undefined) updates.validations = JSON.stringify(d.validations);
   if (d.terminalCommands !== undefined) updates.terminalCommands = JSON.stringify(d.terminalCommands);
   if (d.i18n !== undefined) updates.i18n = d.i18n ? JSON.stringify(d.i18n) : null;
+  if (d.difficulty !== undefined) updates.difficulty = d.difficulty;
   if (d.sortOrder !== undefined) updates.sortOrder = d.sortOrder;
   if (d.moduleId !== undefined) updates.moduleId = d.moduleId;
 

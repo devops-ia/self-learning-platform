@@ -1,0 +1,52 @@
+# =============================================================================
+# Interview Demo - Module Configuration
+# =============================================================================
+# This configuration defines the modules for the technical interview demo.
+# Each module contains 4 exercises of increasing difficulty (easy → hard).
+# =============================================================================
+
+modules:
+  terraform:
+    title: "Terraform"
+    description:
+      es: "Evalúa habilidades de Terraform: debugging, variables, backends y lifecycle"
+      en: "Evaluate Terraform skills: debugging, variables, backends and lifecycle"
+    icon: "Terminal"
+    prefix: "tf"
+    language: "hcl"
+
+  kubernetes:
+    title: "Kubernetes"
+    description:
+      es: "Evalúa habilidades de Kubernetes: Services, Probes, Deployments y Resources"
+      en: "Evaluate Kubernetes skills: Services, Probes, Deployments and Resources"
+    icon: "Box"
+    prefix: "k8s"
+    language: "yaml"
+
+  python:
+    title: "Python"
+    description:
+      es: "Evalúa habilidades de Python: indentación, mutabilidad, excepciones y data model"
+      en: "Evaluate Python skills: indentation, mutability, exceptions and data model"
+    icon: "Code"
+    prefix: "py"
+    language: "python"
+
+  golang:
+    title: "Go"
+    description:
+      es: "Evalúa habilidades de Go: compilación estricta, nil safety, goroutines y concurrencia"
+      en: "Evaluate Go skills: strict compilation, nil safety, goroutines and concurrency"
+    icon: "Cpu"
+    prefix: "go"
+    language: "go"
+
+  java:
+    title: "Java"
+    description:
+      es: "Evalúa habilidades de Java: null safety, contratos de objetos, recursos y colecciones"
+      en: "Evaluate Java skills: null safety, object contracts, resources and collections"
+    icon: "Coffee"
+    prefix: "java"
+    language: "java"

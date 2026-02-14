@@ -1,0 +1,176 @@
+# =============================================================================
+# Exercise 4: ConcurrentModificationException (Hard)
+# =============================================================================
+# Interview scenario: The candidate must identify that removing elements from
+# a list while iterating over it with a for-each loop causes a
+# ConcurrentModificationException. The fix requires using Iterator.remove(),
+# List.removeIf(), or a collect-then-remove pattern.
+# =============================================================================
+
+id: "java-04-concurrent-modification"
+title: "ConcurrentModificationException al eliminar durante iteracion"
+briefing: "El metodo removeCompleted recorre una lista con un for-each y elimina elementos con tasks.remove(task). Esto lanza ConcurrentModificationException porque el for-each usa internamente un Iterator, y modificar la coleccion directamente invalida el iterador. Corrige el metodo para eliminar elementos de forma segura durante la iteracion."
+prerequisites: ["java-03-resource-leak"]
+language: "java"
+difficulty: "hard"
+initialCode: |
+  import java.util.ArrayList;
+  import java.util.List;
+
+  public class Main {
+      static class Task {
+          String name;
+          String status;
+
+          Task(String name, String status) {
+              this.name = name;
+              this.status = status;
+          }
+
+          @Override
+          public String toString() {
+              return name + " [" + status + "]";
+          }
+      }
+
+      public static void removeCompleted(List<Task> tasks) {
+          for (Task task : tasks) {
+              if ("completed".equals(task.status)) {
+                  tasks.remove(task);
+              }
+          }
+      }
+
+      public static void main(String[] args) {
+          List<Task> tasks = new ArrayList<>();
+          tasks.add(new Task("Design API", "completed"));
+          tasks.add(new Task("Write tests", "in-progress"));
+          tasks.add(new Task("Deploy v1", "completed"));
+          tasks.add(new Task("Monitor logs", "pending"));
+          tasks.add(new Task("Fix bug #42", "completed"));
+
+          System.out.println("Before: " + tasks);
+          removeCompleted(tasks);
+          System.out.println("After: " + tasks);
+          System.out.println("Remaining: " + tasks.size());
+      }
+  }
+hints:
+  - "El for-each (for (Task task : tasks)) usa un Iterator internamente. Cuando llamas a tasks.remove(task) dentro del bucle, modificas la lista directamente y el Iterator detecta el cambio estructural, lanzando ConcurrentModificationException."
+  - "Hay tres formas seguras de eliminar durante iteracion: 1) Usar un Iterator explicito con iterator.remove(), 2) Usar List.removeIf() (Java 8+), 3) Crear una lista separada de elementos a eliminar y llamar a removeAll() despues."
+  - "Solucion mas limpia (Java 8+): reemplaza todo el metodo por tasks.removeIf(task -> \"completed\".equals(task.status)). Alternativa con Iterator: Iterator<Task> it = tasks.iterator(); while (it.hasNext()) { if (\"completed\".equals(it.next().status)) it.remove(); }"
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - El for-each de Java usa un Iterator interno: no puedes modificar la coleccion directamente
+  - ConcurrentModificationException es un fail-fast que protege contra iteraciones corruptas
+  - Iterator.remove() es el unico metodo seguro para eliminar durante iteracion manual
+  - List.removeIf() (Java 8+) es la forma idomeatica y concisa
+  - Otras opciones: crear una lista temporal con los elementos a eliminar, o usar streams con filter()
+  - Este patron es uno de los mas preguntados en entrevistas tecnicas de Java
+
+i18n:
+  en:
+    title: "ConcurrentModificationException when removing during iteration"
+    briefing: "The removeCompleted method iterates over a list with a for-each and removes elements with tasks.remove(task). This throws a ConcurrentModificationException because for-each internally uses an Iterator, and directly modifying the collection invalidates the iterator. Fix the method to safely remove elements during iteration."
+    hints:
+      - "The for-each loop (for (Task task : tasks)) uses an Iterator internally. When you call tasks.remove(task) inside the loop, you modify the list directly and the Iterator detects the structural change, throwing ConcurrentModificationException."
+      - "There are three safe ways to remove during iteration: 1) Use an explicit Iterator with iterator.remove(), 2) Use List.removeIf() (Java 8+), 3) Create a separate list of elements to remove and call removeAll() afterwards."
+      - "Cleanest solution (Java 8+): replace the entire method with tasks.removeIf(task -> \"completed\".equals(task.status)). Alternative with Iterator: Iterator<Task> it = tasks.iterator(); while (it.hasNext()) { if (\"completed\".equals(it.next().status)) it.remove(); }"
+    successMessage: |
+      Correct!
+
+      What you learned:
+      - Java's for-each uses an internal Iterator: you cannot modify the collection directly
+      - ConcurrentModificationException is a fail-fast mechanism that protects against corrupted iterations
+      - Iterator.remove() is the only safe method to remove during manual iteration
+      - List.removeIf() (Java 8+) is the idiomatic and concise way
+      - Other options: create a temporary list with elements to remove, or use streams with filter()
+      - This pattern is one of the most commonly asked in Java technical interviews
+
+validations:
+  - type: syntax
+    errorMessage: "El codigo debe compilar correctamente."
+    check:
+      contains: "public class Main"
+    failMessage: |
+      Main.java:1: error: class Main is public, should be declared in a file named Main.java
+
+      La clase principal debe llamarse Main y ser publica.
+
+  - type: semantic
+    errorMessage: "No debes usar tasks.remove(task) dentro de un bucle for-each."
+    check:
+      custom: |
+        const hasForEach = /for\s*\(\s*Task\s+\w+\s*:\s*tasks\s*\)/.test(code);
+        const hasDirectRemove = /tasks\.remove\s*\(\s*task\s*\)/.test(code);
+        if (hasForEach && hasDirectRemove) {
+          return {
+            passed: false,
+            errorMessage: "Estas eliminando elementos con tasks.remove(task) dentro de un for-each. Esto causa ConcurrentModificationException porque el for-each usa un Iterator interno que se invalida al modificar la lista directamente."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      No puedes usar tasks.remove(task) dentro de un for-each.
+      Usa Iterator.remove(), removeIf(), o un patron de collect-then-remove.
+
+  - type: intention
+    errorMessage: "Debes usar un patron seguro para eliminar elementos durante iteracion."
+    check:
+      custom: |
+        const hasIterator = /Iterator/.test(code) && /\.remove\(\)/.test(code);
+        const hasRemoveIf = /\.removeIf\s*\(/.test(code);
+        const hasStream = /\.stream\(\)/.test(code) && /\.filter\(/.test(code);
+        const hasRemoveAll = /\.removeAll\s*\(/.test(code);
+        const noDirectRemoveInForEach = !(
+          /for\s*\(\s*Task\s+\w+\s*:\s*tasks\s*\)/.test(code) &&
+          /tasks\.remove\s*\(\s*task\s*\)/.test(code)
+        );
+        if (!noDirectRemoveInForEach) {
+          return {
+            passed: false,
+            errorMessage: "Sigues usando el patron problematico: for-each + tasks.remove()."
+          };
+        }
+        if (!hasIterator && !hasRemoveIf && !hasStream && !hasRemoveAll) {
+          return {
+            passed: false,
+            errorMessage: "No se detecta un patron seguro de eliminacion. Usa Iterator.remove(), removeIf(), streams con filter(), o removeAll() con una lista temporal."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      Necesitas usar un patron seguro: Iterator.remove(), removeIf(),
+      streams con filter(), o collect-then-removeAll().
+
+terminalCommands:
+  "javac Main.java && java Main":
+    - when:
+        custom: |
+          const hasForEach = /for\s*\(\s*Task\s+\w+\s*:\s*tasks\s*\)/.test(code);
+          const hasDirectRemove = /tasks\.remove\s*\(\s*task\s*\)/.test(code);
+          return hasForEach && hasDirectRemove;
+      output: |
+        Before: [Design API [completed], Write tests [in-progress], Deploy v1 [completed], Monitor logs [pending], Fix bug #42 [completed]]
+        Exception in thread "main" java.util.ConcurrentModificationException
+        	at java.base/java.util.ArrayList$Itr.checkForComodification(ArrayList.java:1013)
+        	at java.base/java.util.ArrayList$Itr.next(ArrayList.java:967)
+        	at Main.removeCompleted(Main.java:22)
+        	at Main.main(Main.java:36)
+
+        The for-each loop uses an internal Iterator. Calling tasks.remove(task)
+        modifies the list structurally, which the Iterator detects on the next
+        call to next(), throwing ConcurrentModificationException.
+      exitCode: 1
+    - output: |
+        Before: [Design API [completed], Write tests [in-progress], Deploy v1 [completed], Monitor logs [pending], Fix bug #42 [completed]]
+        After: [Write tests [in-progress], Monitor logs [pending]]
+        Remaining: 2
+      exitCode: 0
+
+  "javac Main.java":
+    - output: |
+        Compilation successful.
+      exitCode: 0

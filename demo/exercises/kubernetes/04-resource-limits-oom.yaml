@@ -1,0 +1,375 @@
+id: "k8s-04-resource-limits-oom"
+title: "Resource limits: OOMKilled"
+briefing: "Este Pod tiene los resources mal configurados: el límite de memoria es menor que la petición y falta el límite de CPU. Kubernetes rechazará el manifiesto o el Pod sufrirá OOMKilled."
+prerequisites: []
+language: "yaml"
+difficulty: "hard"
+initialCode: |
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: web-app
+    labels:
+      app: web
+  spec:
+    containers:
+      - name: web
+        image: nginx:1.25
+        ports:
+          - containerPort: 80
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "500m"
+          limits:
+            memory: "10Mi"
+
+hints:
+  - "El error dice que el límite de memoria (10Mi) es menor que la petición (256Mi). En Kubernetes, limits siempre deben ser >= requests."
+  - "Además de corregir el límite de memoria, falta definir un límite de CPU. Sin cpu en limits, el container podría consumir toda la CPU del nodo."
+  - "Solución: cambia memory en limits a \"256Mi\" (o más) y añade cpu: \"500m\" (o más) en limits para que limits >= requests en ambos recursos."
+successMessage: |
+  ¡Excelente! Los resource limits están correctamente configurados.
+
+  Lo que aprendiste:
+  - requests define los recursos mínimos garantizados para el container
+  - limits define el máximo que el container puede usar
+  - limits siempre deben ser >= requests; si no, el API server rechaza el Pod
+  - Si un container supera su límite de memoria, Kubernetes lo mata (OOMKilled)
+  - Si supera su límite de CPU, el container es throttled (ralentizado) pero no matado
+  - Es buena práctica definir siempre requests y limits para memory y cpu
+
+i18n:
+  en:
+    title: "Resource limits: OOMKilled"
+    briefing: "This Pod has misconfigured resources: the memory limit is lower than the request and the CPU limit is missing. Kubernetes will reject the manifest or the Pod will suffer OOMKilled."
+    hints:
+      - "The error says the memory limit (10Mi) is less than the request (256Mi). In Kubernetes, limits must always be >= requests."
+      - "Besides fixing the memory limit, a CPU limit is missing. Without cpu in limits, the container could consume all CPU on the node."
+      - "Solution: change memory in limits to \"256Mi\" (or more) and add cpu: \"500m\" (or more) in limits so that limits >= requests for both resources."
+    successMessage: |
+      Excellent! The resource limits are correctly configured.
+
+      What you learned:
+      - requests define the minimum guaranteed resources for the container
+      - limits define the maximum the container can use
+      - limits must always be >= requests; otherwise the API server rejects the Pod
+      - If a container exceeds its memory limit, Kubernetes kills it (OOMKilled)
+      - If it exceeds its CPU limit, the container is throttled (slowed down) but not killed
+      - It's good practice to always define requests and limits for both memory and cpu
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "El container debe tener limits de memory y cpu."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const container = _get(parsed, 'spec.containers.0');
+          if (!container) return { passed: true };
+          const limits = _get(parsed, 'spec.containers.0.resources.limits');
+          if (!limits) {
+            return {
+              passed: false,
+              errorMessage: "Error: resources.limits no está definido\n\nEl container necesita un bloque resources.limits con memory y cpu para limitar el consumo de recursos."
+            };
+          }
+          if (!limits.memory) {
+            return {
+              passed: false,
+              errorMessage: "Error: resources.limits.memory no está definido\n\nSin un límite de memoria, el container podría consumir toda la memoria del nodo y provocar la muerte de otros Pods."
+            };
+          }
+          if (!limits.cpu) {
+            return {
+              passed: false,
+              errorMessage: "Error: resources.limits.cpu no está definido\n\nSin un límite de CPU, el container podría consumir toda la CPU del nodo. Añade un valor como \"500m\" (medio core) o \"1\" (un core completo)."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El container debe tener limits de memory y cpu."
+
+  - type: intention
+    errorMessage: "Los limits deben ser >= requests."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const container = _get(parsed, 'spec.containers.0');
+          if (!container || !container.resources) return { passed: true };
+          const requests = container.resources.requests;
+          const limits = container.resources.limits;
+          if (!requests || !limits) return { passed: true };
+
+          function parseMem(val) {
+            if (!val) return 0;
+            var s = String(val);
+            if (s.endsWith('Gi')) return parseFloat(s) * 1024;
+            if (s.endsWith('Mi')) return parseFloat(s);
+            if (s.endsWith('Ki')) return parseFloat(s) / 1024;
+            return parseFloat(s) / (1024 * 1024);
+          }
+
+          function parseCpu(val) {
+            if (!val) return 0;
+            var s = String(val);
+            if (s.endsWith('m')) return parseFloat(s);
+            return parseFloat(s) * 1000;
+          }
+
+          if (limits.memory && requests.memory) {
+            var limMem = parseMem(limits.memory);
+            var reqMem = parseMem(requests.memory);
+            if (limMem < reqMem) {
+              return {
+                passed: false,
+                errorMessage: "Error from server (Invalid): Pod \"web-app\" is invalid:\nspec.containers[0].resources.limits.memory: Invalid value: \"" + String(limits.memory) + "\": must be greater than or equal to requests.memory \"" + String(requests.memory) + "\"\n\nEl límite de memoria (" + String(limits.memory) + ") es menor que la petición (" + String(requests.memory) + "). Kubernetes exige que limits >= requests."
+              };
+            }
+          }
+
+          if (limits.cpu && requests.cpu) {
+            var limCpu = parseCpu(limits.cpu);
+            var reqCpu = parseCpu(requests.cpu);
+            if (limCpu < reqCpu) {
+              return {
+                passed: false,
+                errorMessage: "Error from server (Invalid): Pod \"web-app\" is invalid:\nspec.containers[0].resources.limits.cpu: Invalid value: \"" + String(limits.cpu) + "\": must be greater than or equal to requests.cpu \"" + String(requests.cpu) + "\"\n\nEl límite de CPU (" + String(limits.cpu) + ") es menor que la petición (" + String(requests.cpu) + "). Kubernetes exige que limits >= requests."
+              };
+            }
+          }
+
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Los limits deben ser >= requests."
+
+terminalCommands:
+  "kubectl apply -f pod.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: |
+        error: error validating "pod.yaml": error converting YAML to JSON: yaml: invalid YAML
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            var p = yaml.load(code);
+            var limits = _get(p, 'spec.containers.0.resources.limits');
+            var requests = _get(p, 'spec.containers.0.resources.requests');
+            if (!limits || !requests) return false;
+            function parseMem(val) {
+              if (!val) return 0;
+              var s = String(val);
+              if (s.endsWith('Gi')) return parseFloat(s) * 1024;
+              if (s.endsWith('Mi')) return parseFloat(s);
+              if (s.endsWith('Ki')) return parseFloat(s) / 1024;
+              return parseFloat(s) / (1024 * 1024);
+            }
+            if (limits.memory && requests.memory) {
+              return parseMem(limits.memory) < parseMem(requests.memory);
+            }
+            return false;
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "pod.yaml": Pod "web-app" is invalid:
+        spec.containers[0].resources.limits.memory: Invalid value: must be greater than or equal to cpu request
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            var p = yaml.load(code);
+            var limits = _get(p, 'spec.containers.0.resources.limits');
+            var requests = _get(p, 'spec.containers.0.resources.requests');
+            if (!limits || !requests) return false;
+            function parseCpu(val) {
+              if (!val) return 0;
+              var s = String(val);
+              if (s.endsWith('m')) return parseFloat(s);
+              return parseFloat(s) * 1000;
+            }
+            if (limits.cpu && requests.cpu) {
+              return parseCpu(limits.cpu) < parseCpu(requests.cpu);
+            }
+            return !limits.cpu && requests.cpu;
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "pod.yaml": Pod "web-app" is invalid:
+        spec.containers[0].resources.limits.cpu: Invalid value: must be greater than or equal to cpu request
+      exitCode: 1
+    - output: "pod/web-app created"
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            var p = yaml.load(code);
+            var limits = _get(p, 'spec.containers.0.resources.limits');
+            var requests = _get(p, 'spec.containers.0.resources.requests');
+            if (!limits || !requests) return true;
+            function parseMem(val) {
+              if (!val) return 0;
+              var s = String(val);
+              if (s.endsWith('Gi')) return parseFloat(s) * 1024;
+              if (s.endsWith('Mi')) return parseFloat(s);
+              if (s.endsWith('Ki')) return parseFloat(s) / 1024;
+              return parseFloat(s) / (1024 * 1024);
+            }
+            function parseCpu(val) {
+              if (!val) return 0;
+              var s = String(val);
+              if (s.endsWith('m')) return parseFloat(s);
+              return parseFloat(s) * 1000;
+            }
+            if (limits.memory && requests.memory && parseMem(limits.memory) < parseMem(requests.memory)) return true;
+            if (limits.cpu && requests.cpu && parseCpu(limits.cpu) < parseCpu(requests.cpu)) return true;
+            if (!limits.cpu && requests.cpu) return true;
+            if (!limits.memory) return true;
+            return false;
+          } catch { return true; }
+      output: "No resources found in default namespace."
+      exitCode: 0
+    - when:
+        custom: |
+          try {
+            var p = yaml.load(code);
+            var limits = _get(p, 'spec.containers.0.resources.limits');
+            function parseMem(val) {
+              if (!val) return 0;
+              var s = String(val);
+              if (s.endsWith('Gi')) return parseFloat(s) * 1024;
+              if (s.endsWith('Mi')) return parseFloat(s);
+              if (s.endsWith('Ki')) return parseFloat(s) / 1024;
+              return parseFloat(s) / (1024 * 1024);
+            }
+            return limits && limits.memory && parseMem(limits.memory) < 64;
+          } catch { return false; }
+      output: |
+        NAME      READY   STATUS      RESTARTS      AGE
+        web-app   0/1     OOMKilled   3 (12s ago)   45s
+      exitCode: 0
+    - output: |
+        NAME      READY   STATUS    RESTARTS   AGE
+        web-app   1/1     Running   0          5s
+      exitCode: 0
+
+  "kubectl describe pod web-app":
+    - when:
+        custom: |
+          try {
+            var p = yaml.load(code);
+            var limits = _get(p, 'spec.containers.0.resources.limits');
+            var requests = _get(p, 'spec.containers.0.resources.requests');
+            if (!limits || !requests) return true;
+            function parseMem(val) {
+              if (!val) return 0;
+              var s = String(val);
+              if (s.endsWith('Gi')) return parseFloat(s) * 1024;
+              if (s.endsWith('Mi')) return parseFloat(s);
+              if (s.endsWith('Ki')) return parseFloat(s) / 1024;
+              return parseFloat(s) / (1024 * 1024);
+            }
+            function parseCpu(val) {
+              if (!val) return 0;
+              var s = String(val);
+              if (s.endsWith('m')) return parseFloat(s);
+              return parseFloat(s) * 1000;
+            }
+            if (limits.memory && requests.memory && parseMem(limits.memory) < parseMem(requests.memory)) return true;
+            if (limits.cpu && requests.cpu && parseCpu(limits.cpu) < parseCpu(requests.cpu)) return true;
+            if (!limits.cpu && requests.cpu) return true;
+            if (!limits.memory) return true;
+            return false;
+          } catch { return true; }
+      output: "Error from server (NotFound): pods \"web-app\" not found"
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            var p = yaml.load(code);
+            var limits = _get(p, 'spec.containers.0.resources.limits');
+            function parseMem(val) {
+              if (!val) return 0;
+              var s = String(val);
+              if (s.endsWith('Gi')) return parseFloat(s) * 1024;
+              if (s.endsWith('Mi')) return parseFloat(s);
+              if (s.endsWith('Ki')) return parseFloat(s) / 1024;
+              return parseFloat(s) / (1024 * 1024);
+            }
+            return limits && limits.memory && parseMem(limits.memory) < 64;
+          } catch { return false; }
+      output: |
+        Name:         web-app
+        Namespace:    default
+        Status:       Running
+        Containers:
+          web:
+            Image:          nginx:1.25
+            Port:           80/TCP
+            Limits:
+              cpu:     500m
+              memory:  10Mi
+            Requests:
+              cpu:     500m
+              memory:  256Mi
+            State:          Waiting
+              Reason:       CrashLoopBackOff
+            Last State:     Terminated
+              Reason:       OOMKilled
+              Exit Code:    137
+            Ready:          False
+            Restart Count:  3
+        Events:
+          Type     Reason     Age                From               Message
+          ----     ------     ----               ----               -------
+          Normal   Scheduled  50s                default-scheduler  Successfully assigned default/web-app to node-1
+          Normal   Pulled     12s (x4 over 49s)  kubelet            Container image "nginx:1.25" already present on machine
+          Normal   Created    12s (x4 over 49s)  kubelet            Created container web
+          Normal   Started    12s (x4 over 49s)  kubelet            Started container web
+          Warning  BackOff    1s (x5 over 40s)   kubelet            Back-off restarting failed container web in pod web-app_default
+      exitCode: 0
+    - output: |
+        Name:         web-app
+        Namespace:    default
+        Status:       Running
+        Containers:
+          web:
+            Image:          nginx:1.25
+            Port:           80/TCP
+            Limits:
+              cpu:     500m
+              memory:  256Mi
+            Requests:
+              cpu:     500m
+              memory:  256Mi
+            State:          Running
+              Started:      Thu, 13 Feb 2026 10:00:00 +0000
+            Ready:          True
+            Restart Count:  0
+        Events:
+          Type    Reason     Age   From               Message
+          ----    ------     ----  ----               -------
+          Normal  Scheduled  10s   default-scheduler  Successfully assigned default/web-app to node-1
+          Normal  Pulled     9s    kubelet            Container image "nginx:1.25" already present on machine
+          Normal  Created    9s    kubelet            Created container web
+          Normal  Started    8s    kubelet            Started container web
+      exitCode: 0

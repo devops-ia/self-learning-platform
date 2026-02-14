@@ -6,6 +6,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { hashPassword, verifyPassword, validatePassword } from "@/lib/auth/password";
 import { logAudit } from "@/lib/auth/audit";
+import { encrypt } from "@/lib/crypto";
 
 const updateProfileSchema = z.object({
   displayName: z.string().min(1).max(100).optional(),
@@ -62,7 +63,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const updates: Record<string, string> = { updatedAt: new Date().toISOString() };
-  if (parsed.data.displayName !== undefined) updates.displayName = parsed.data.displayName;
+  if (parsed.data.displayName !== undefined) updates.displayName = encrypt(parsed.data.displayName);
   if (parsed.data.username !== undefined) updates.username = parsed.data.username;
 
   db.update(users)

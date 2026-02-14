@@ -1,0 +1,161 @@
+# =============================================================================
+# Exercise 2: equals/hashCode Contract (Easy)
+# =============================================================================
+# Interview scenario: The candidate must identify that the Employee class
+# overrides equals() but not hashCode(). This breaks the contract required by
+# HashMap and HashSet: if two objects are equal, they must have the same hash
+# code. Without hashCode(), the HashSet treats equal objects as different.
+# =============================================================================
+
+id: "java-02-equals-hashcode"
+title: "Contrato equals/hashCode roto en HashSet"
+briefing: "La clase Employee sobreescribe equals() usando el campo id, pero no sobreescribe hashCode(). Esto rompe el contrato de Java: si dos objetos son iguales segun equals(), deben devolver el mismo hashCode(). Sin hashCode(), un HashSet trata dos empleados con el mismo id como distintos. Anade el metodo hashCode() basado en el campo id."
+prerequisites: []
+language: "java"
+difficulty: "easy"
+initialCode: |
+  import java.util.HashSet;
+  import java.util.Set;
+
+  public class Main {
+      static class Employee {
+          String name;
+          String id;
+
+          Employee(String name, String id) {
+              this.name = name;
+              this.id = id;
+          }
+
+          @Override
+          public boolean equals(Object o) {
+              if (this == o) return true;
+              if (o == null || getClass() != o.getClass()) return false;
+              Employee emp = (Employee) o;
+              return id.equals(emp.id);
+          }
+
+          @Override
+          public String toString() {
+              return name + " (" + id + ")";
+          }
+      }
+
+      public static void main(String[] args) {
+          Employee e1 = new Employee("Alice", "E001");
+          Employee e2 = new Employee("Alice Smith", "E001");
+
+          Set<Employee> employees = new HashSet<>();
+          employees.add(e1);
+          employees.add(e2);
+
+          System.out.println("Employees: " + employees);
+          System.out.println("Size: " + employees.size());
+          System.out.println("Expected size: 1 (same ID)");
+          System.out.println("e1.equals(e2): " + e1.equals(e2));
+      }
+  }
+hints:
+  - "Ejecuta el programa y observa que el tamaño del Set es 2, aunque e1.equals(e2) devuelve true. Esto ocurre porque HashSet usa hashCode() para ubicar los objetos internamente."
+  - "En Java, si sobreescribes equals() debes tambien sobreescribir hashCode(). La regla es: objetos iguales segun equals() deben tener el mismo hashCode(). Sin hashCode(), cada objeto usa la implementacion de Object, que devuelve valores distintos."
+  - "Solucion: anade un metodo hashCode() que use el campo id. Por ejemplo: @Override public int hashCode() { return id.hashCode(); } o usa Objects.hash(id)."
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - El contrato equals/hashCode de Java: si a.equals(b) es true, entonces a.hashCode() == b.hashCode()
+  - HashSet y HashMap usan hashCode() para localizar el bucket y luego equals() para comparar
+  - Sin hashCode() correcto, las colecciones basadas en hash no funcionan como se espera
+  - Usa Objects.hash() o el hashCode() del campo clave para implementarlo
+  - Este es uno de los errores mas clasicos en entrevistas de Java
+
+i18n:
+  en:
+    title: "Broken equals/hashCode contract in HashSet"
+    briefing: "The Employee class overrides equals() using the id field, but does not override hashCode(). This breaks the Java contract: if two objects are equal according to equals(), they must return the same hashCode(). Without hashCode(), a HashSet treats two employees with the same id as different. Add the hashCode() method based on the id field."
+    hints:
+      - "Run the program and notice the Set size is 2, even though e1.equals(e2) returns true. This happens because HashSet uses hashCode() to locate objects internally."
+      - "In Java, if you override equals() you must also override hashCode(). The rule is: objects that are equal according to equals() must have the same hashCode(). Without hashCode(), each object uses the Object implementation, which returns different values."
+      - "Solution: add a hashCode() method that uses the id field. For example: @Override public int hashCode() { return id.hashCode(); } or use Objects.hash(id)."
+    successMessage: |
+      Correct!
+
+      What you learned:
+      - The Java equals/hashCode contract: if a.equals(b) is true, then a.hashCode() == b.hashCode()
+      - HashSet and HashMap use hashCode() to locate the bucket and then equals() to compare
+      - Without a correct hashCode(), hash-based collections don't work as expected
+      - Use Objects.hash() or the key field's hashCode() to implement it
+      - This is one of the most classic Java interview mistakes
+
+validations:
+  - type: syntax
+    errorMessage: "El codigo debe compilar correctamente."
+    check:
+      contains: "public class Main"
+    failMessage: |
+      Main.java:1: error: class Main is public, should be declared in a file named Main.java
+
+      La clase principal debe llamarse Main y ser publica.
+
+  - type: semantic
+    errorMessage: "La clase Employee debe tener un metodo hashCode()."
+    check:
+      custom: |
+        const hasHashCode = /hashCode\s*\(\s*\)/.test(code);
+        if (!hasHashCode) {
+          return {
+            passed: false,
+            errorMessage: "La clase Employee sobreescribe equals() pero no hashCode(). Esto rompe el contrato de Java para colecciones basadas en hash. Debes anadir un metodo hashCode()."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      Falta el metodo hashCode() en la clase Employee.
+      Si sobreescribes equals(), debes sobreescribir tambien hashCode().
+
+  - type: intention
+    errorMessage: "El metodo hashCode() debe usar el campo id para ser consistente con equals()."
+    check:
+      custom: |
+        const hasHashCode = /hashCode\s*\(\s*\)/.test(code);
+        if (!hasHashCode) {
+          return { passed: false, errorMessage: "Falta hashCode()." };
+        }
+        const hashCodeBlock = code.substring(code.indexOf('hashCode'));
+        const usesId = /id\.hashCode\(\)/.test(hashCodeBlock) ||
+                       /Objects\.hash\s*\(\s*id\s*\)/.test(hashCodeBlock) ||
+                       /id\s*\./.test(hashCodeBlock);
+        if (!usesId) {
+          return {
+            passed: false,
+            errorMessage: "El hashCode() no parece usar el campo id. Para ser consistente con equals(), hashCode() debe basarse en los mismos campos que equals() utiliza para comparar."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      El hashCode() debe ser consistente con equals(). Como equals() compara por id,
+      hashCode() tambien debe calcularse a partir de id.
+
+terminalCommands:
+  "javac Main.java && java Main":
+    - when:
+        custom: |
+          return !/hashCode\s*\(\s*\)/.test(code) ||
+                 (!/id\.hashCode\(\)/.test(code) && !/Objects\.hash/.test(code));
+      output: |
+        Employees: [Alice (E001), Alice Smith (E001)]
+        Size: 2
+        Expected size: 1 (same ID)
+        e1.equals(e2): true
+
+        Note: Size is 2 instead of 1 because Employee overrides equals()
+        but not hashCode(). HashSet uses hashCode() to determine bucket
+        placement. Without a consistent hashCode(), equal objects end up
+        in different buckets and are treated as distinct entries.
+      exitCode: 0
+    - output: |
+        Employees: [Alice (E001)]
+        Size: 1
+        Expected size: 1 (same ID)
+        e1.equals(e2): true
+      exitCode: 0

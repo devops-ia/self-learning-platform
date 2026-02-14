@@ -269,6 +269,7 @@ npm run exercises:import
 ### Via Admin Panel
 
 Go to `/admin/modules` and click "Create module". Fill in:
+
 - **ID**: `docker` (URL slug)
 - **Title**: `Docker`
 - **Prefix**: `dk` (used in exercise IDs)

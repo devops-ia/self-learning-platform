@@ -12,6 +12,7 @@ interface User {
   displayName: string | null;
   role: string;
   createdAt: string;
+  disabled?: boolean;
 }
 
 export default function UserTable() {
@@ -219,6 +220,11 @@ export default function UserTable() {
                     >
                       {user.role}
                     </span>
+                    {user.disabled && (
+                      <span className="ml-1 text-xs px-2 py-0.5 rounded bg-[var(--error)]/10 text-[var(--error)]">
+                        {t.adminPanel.disabled || "Disabled"}
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 text-[var(--muted)]">
                     {new Date(user.createdAt).toLocaleDateString()}

@@ -31,4 +31,5 @@ export interface Exercise {
   prerequisites: string[];
   hints: string[];
   successMessage: string;
+  difficulty?: "easy" | "medium" | "hard";
 }

@@ -60,6 +60,21 @@ OAuth providers are only shown on the login page when their client ID is configu
 | `TOTP_ISSUER` | `DevOps Learning Platform` | Name shown in authenticator apps |
 | `PORT` | `3000` | Server port |
 | `HOST` | `0.0.0.0` | Server host (Docker) |
+| `NEXT_PUBLIC_REGISTRATION_ENABLED` | `true` | Set to `"false"` to disable new user sign-ups. Existing users can still log in. |
+| `NEXT_PUBLIC_DEMO_MODE` | `false` | When `"true"`, hides auth UI in Navbar and shows a Demo badge. Admin panel still requires login. |
+
+### SMTP
+
+Email verification and password reset features are only enabled when `SMTP_HOST` is configured.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SMTP_HOST` | — | SMTP server hostname (e.g., `smtp.gmail.com`) |
+| `SMTP_PORT` | `587` | SMTP server port |
+| `SMTP_USER` | — | SMTP authentication username |
+| `SMTP_PASS` | — | SMTP authentication password |
+| `SMTP_FROM` | `noreply@devopslab.local` | Sender email address |
+| `SMTP_SECURE` | `false` | Use TLS (set to `true` for port 465) |
 
 ## Configuration Files
 

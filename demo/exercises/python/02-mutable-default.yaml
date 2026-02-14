@@ -1,0 +1,141 @@
+# =============================================================================
+# Exercise 2: Mutable Default Argument (Easy)
+# =============================================================================
+# Interview scenario: The candidate must identify that using a mutable object
+# (a list) as a default argument causes it to be shared across all calls.
+# This is one of Python's most famous gotchas.
+# =============================================================================
+
+id: "py-02-mutable-default"
+title: "Argumento mutable por defecto"
+briefing: "La funcion add_item usa una lista vacia como valor por defecto del parametro items. En Python, los argumentos por defecto se evaluan una sola vez al definir la funcion, no en cada llamada. Esto provoca que todas las llamadas compartan la misma lista. Corrige la funcion para que cada llamada sin argumento items reciba su propia lista independiente."
+prerequisites: []
+language: "python"
+difficulty: "easy"
+initialCode: |
+  def add_item(item, items=[]):
+      items.append(item)
+      return items
+
+  list1 = add_item("apple")
+  print(f"List 1: {list1}")
+
+  list2 = add_item("banana")
+  print(f"List 2: {list2}")
+
+  list3 = add_item("cherry")
+  print(f"List 3: {list3}")
+hints:
+  - "Ejecuta el codigo mentalmente: list1 deberia ser ['apple'], pero list2 sale ['apple', 'banana']. La lista por defecto se reutiliza entre llamadas."
+  - "El patron correcto en Python es usar None como valor por defecto y crear la lista dentro de la funcion: 'if items is None: items = []'."
+  - "Cambia la firma a 'def add_item(item, items=None):' y anade al principio del cuerpo: 'if items is None:\\n        items = []'."
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - En Python, los valores por defecto de los argumentos se evaluan UNA sola vez, al definir la funcion
+  - Usar objetos mutables (listas, diccionarios, sets) como defaults provoca que se compartan entre llamadas
+  - El patron idiomatico es usar None como default y crear el objeto mutable dentro del cuerpo de la funcion
+  - Esta pregunta aparece en casi todas las entrevistas de Python por lo sutil e inesperado del comportamiento
+
+i18n:
+  en:
+    title: "Mutable Default Argument"
+    briefing: "The add_item function uses an empty list as the default value for the items parameter. In Python, default arguments are evaluated only once when the function is defined, not on each call. This causes all calls to share the same list. Fix the function so each call without an items argument receives its own independent list."
+    hints:
+      - "Run the code mentally: list1 should be ['apple'], but list2 comes out as ['apple', 'banana']. The default list is reused across calls."
+      - "The correct Python pattern is to use None as the default value and create the list inside the function: 'if items is None: items = []'."
+      - "Change the signature to 'def add_item(item, items=None):' and add at the beginning of the body: 'if items is None:\\n        items = []'."
+    successMessage: |
+      Correct!
+
+      What you learned:
+      - In Python, default argument values are evaluated ONCE, when the function is defined
+      - Using mutable objects (lists, dicts, sets) as defaults causes them to be shared across calls
+      - The idiomatic pattern is to use None as the default and create the mutable object inside the function body
+      - This question appears in nearly every Python interview because of its subtle and unexpected behavior
+
+validations:
+  - type: syntax
+    errorMessage: "El parametro items debe usar None como valor por defecto, no una lista."
+    check:
+      match: "def add_item\\(item,\\s*items\\s*=\\s*None\\)"
+    failMessage: |
+      Bug: Mutable Default Argument
+
+      La firma 'def add_item(item, items=[])' usa una lista como valor por defecto.
+      Esta lista se crea una sola vez y se comparte entre todas las llamadas.
+
+      Cambia el default a None: 'def add_item(item, items=None):'
+
+  - type: syntax
+    errorMessage: "Falta la comprobacion 'if items is None' para crear una lista nueva."
+    check:
+      match: "if items is None"
+    failMessage: |
+      Despues de cambiar el default a None, necesitas comprobar si items es None
+      al principio de la funcion y crear una lista nueva:
+
+          if items is None:
+              items = []
+
+      Sin esto, items sera None y no podras hacer append.
+
+  - type: semantic
+    errorMessage: "Dentro del if, debes asignar items = [] para crear una lista nueva."
+    check:
+      custom: |
+        const hasNoneDefault = /def add_item\(item,\s*items\s*=\s*None\)/.test(code);
+        const hasNoneCheck = /if items is None/.test(code);
+        const hasListCreation = /items\s*=\s*\[\]/.test(code);
+        if (!hasNoneDefault) {
+          return { passed: false, errorMessage: "El default debe ser None, no []." };
+        }
+        if (!hasNoneCheck) {
+          return { passed: false, errorMessage: "Falta 'if items is None:'." };
+        }
+        if (!hasListCreation) {
+          return { passed: false, errorMessage: "Falta 'items = []' dentro del if." };
+        }
+        return { passed: true };
+    failMessage: |
+      Necesitas el patron completo:
+        def add_item(item, items=None):
+            if items is None:
+                items = []
+            items.append(item)
+            return items
+
+terminalCommands:
+  "python main.py":
+    - when:
+        match: "items\\s*=\\s*\\[\\s*\\]\\s*\\)"
+      output: |
+        List 1: ['apple']
+        List 2: ['apple', 'banana']
+        List 3: ['apple', 'banana', 'cherry']
+
+        Bug! Each call should produce an independent list, but they all share
+        the same default list object. Expected output:
+          List 1: ['apple']
+          List 2: ['banana']
+          List 3: ['cherry']
+      exitCode: 1
+
+    - when:
+        not:
+          match: "if items is None"
+      output: |
+        Traceback (most recent call last):
+          File "main.py", line 5, in <module>
+            list1 = add_item("apple")
+          File "main.py", line 2, in add_item
+            items.append(item)
+        AttributeError: 'NoneType' object has no attribute 'append'
+      exitCode: 1
+
+    - output: |
+        List 1: ['apple']
+        List 2: ['banana']
+        List 3: ['cherry']
+      exitCode: 0

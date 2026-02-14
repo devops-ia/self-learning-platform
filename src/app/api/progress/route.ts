@@ -1,32 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { users, progress } from "@/lib/db/schema";
+import { progress } from "@/lib/db/schema";
 import { eq, and, like } from "drizzle-orm";
 import { getModuleExercises, getModuleFromDB } from "@/lib/exercises";
+import { getCurrentUserId } from "@/lib/auth/session";
+import { isDemoMode } from "@/lib/settings";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("userId");
   const moduleName = searchParams.get("module");
 
+  // Require authenticated user
+  const userId = await getCurrentUserId();
   if (!userId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
-  }
-
-  // Ensure user exists
-  const existingUser = db
-    .select()
-    .from(users)
-    .where(eq(users.id, userId))
-    .get();
-
-  if (!existingUser) {
-    // Create user and initialize progress
-    db.insert(users)
-      .values({ id: userId, username: "anonymous", createdAt: new Date().toISOString() })
-      .run();
+    if (isDemoMode()) {
+      // In demo mode without login, return empty progress
+      const exercises = moduleName ? getModuleExercises(moduleName) : [];
+      const progressMap: Record<string, string> = {};
+      for (const ex of exercises) {
+        progressMap[ex.id] = ex.prerequisites.length === 0 ? "available" : "locked";
+      }
+      return NextResponse.json({ progress: progressMap });
+    }
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
   const moduleConf = moduleName ? getModuleFromDB(moduleName) : null;

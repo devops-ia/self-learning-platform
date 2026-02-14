@@ -8,6 +8,7 @@ import { verifyPassword } from "@/lib/auth/password";
 import { getSession } from "@/lib/auth/session";
 import { logAudit } from "@/lib/auth/audit";
 import { checkRateLimit } from "@/lib/auth/rate-limit";
+import { hmacHash, safeDecrypt } from "@/lib/crypto";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -38,11 +39,22 @@ export async function POST(req: NextRequest) {
 
   const { email, password } = parsed.data;
 
-  const user = db
+  // Lookup by email_hash (encrypted) first, fall back to plaintext for legacy
+  const emailH = hmacHash(email);
+  let user = db
     .select()
     .from(users)
-    .where(eq(users.email, email))
+    .where(eq(users.emailHash, emailH))
     .get();
+
+  if (!user) {
+    // Fallback: try plaintext email for unencrypted legacy data
+    user = db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .get();
+  }
 
   if (!user || !user.passwordHash) {
     logAudit("login_failed", { req, details: { email } });
@@ -50,6 +62,10 @@ export async function POST(req: NextRequest) {
       { error: "Invalid email or password" },
       { status: 401 }
     );
+  }
+
+  if (user.disabled) {
+    return NextResponse.json({ error: "Account disabled" }, { status: 403 });
   }
 
   const valid = await verifyPassword(user.passwordHash, password);
@@ -69,15 +85,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       requires2FA: true,
-      tempToken: randomUUID(), // Not used server-side; session tracks pending state
+      tempToken: randomUUID(),
     });
   }
 
   // Create full session
+  const decryptedEmail = safeDecrypt(user.email);
   const session = await getSession();
   session.userId = user.id;
   session.role = user.role as "admin" | "user";
-  session.email = user.email || undefined;
+  session.email = decryptedEmail || undefined;
   await session.save();
 
   logAudit("login", { userId: user.id, req });
@@ -85,9 +102,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     user: {
       id: user.id,
-      email: user.email,
+      email: decryptedEmail,
       username: user.username,
-      displayName: user.displayName,
+      displayName: safeDecrypt(user.displayName),
       role: user.role,
       avatarUrl: user.avatarUrl,
     },

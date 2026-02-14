@@ -122,6 +122,7 @@ export const users = pgTable("users", {
 ```
 
 Key differences:
+
 - `sqliteTable` → `pgTable`
 - `integer("col", { mode: "boolean" })` → `boolean("col")`
 - `text("col").default(new Date().toISOString())` → `timestamp("col").defaultNow()`
@@ -299,6 +300,7 @@ users   1──N passkeys      (user_id → users.id)
 ```
 
 Exercise data is stored as JSON strings in TEXT columns:
+
 - `prerequisites` — `["tf-01-broken-provider"]`
 - `hints` — `["Hint 1", "Hint 2"]`
 - `validations` — `[{"type":"syntax","check":{"contains":"x"},...}]`

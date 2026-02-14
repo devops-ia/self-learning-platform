@@ -1,0 +1,201 @@
+id: "go-01-unused-variable"
+title: "Variable no utilizada"
+briefing: "El programa no compila porque hay una variable declarada que nunca se usa. En Go, las variables no utilizadas son un error de compilacion, no solo un warning."
+prerequisites: []
+language: "go"
+difficulty: "easy"
+initialCode: |
+  package main
+
+  import (
+  	"fmt"
+  	"strings"
+  )
+
+  func main() {
+  	name := "World"
+  	greeting := "Hello"
+  	message := fmt.Sprintf("%s, %s!", greeting, name)
+
+  	upper := strings.ToUpper(name)
+
+  	fmt.Println(message)
+  }
+
+hints:
+  - "El compilador de Go no permite variables declaradas que no se utilicen. Lee el mensaje de error: te dice exactamente cual variable sobra."
+  - "La variable `upper` se declara en la linea 13 pero nunca se usa en el resto del programa. Tienes dos opciones: usarla o eliminarla."
+  - "Solucion: elimina la linea `upper := strings.ToUpper(name)` (y el import `strings` si ya no se usa), o usa `upper` en el Println, por ejemplo: `fmt.Println(message, upper)`."
+successMessage: |
+  !Correcto! El programa compila y se ejecuta sin errores.
+
+  Lo que aprendiste:
+  - Go trata las variables no utilizadas como errores de compilacion, no como warnings
+  - Los imports no utilizados tambien causan errores de compilacion
+  - Esta regla estricta ayuda a mantener el codigo limpio y sin residuos
+  - Puedes usar `_` como nombre de variable si necesitas descartar un valor explicitamente
+
+i18n:
+  en:
+    title: "Unused variable"
+    briefing: "The program won't compile because there's a declared variable that is never used. In Go, unused variables are compilation errors, not just warnings."
+    hints:
+      - "The Go compiler does not allow declared variables that are never used. Read the error message: it tells you exactly which variable is the problem."
+      - "The variable `upper` is declared on line 13 but never used in the rest of the program. You have two options: use it or remove it."
+      - "Solution: remove the line `upper := strings.ToUpper(name)` (and the `strings` import if no longer needed), or use `upper` in the Println, e.g.: `fmt.Println(message, upper)`."
+    successMessage: |
+      Correct! The program compiles and runs without errors.
+
+      What you learned:
+      - Go treats unused variables as compilation errors, not warnings
+      - Unused imports also cause compilation errors
+      - This strict rule helps keep code clean and free of dead code
+      - You can use `_` as a variable name if you need to explicitly discard a value
+
+validations:
+  - type: syntax
+    errorMessage: "El codigo debe contener el paquete main."
+    check:
+      contains: "package main"
+    failMessage: |
+      Error: expected 'package', found 'EOF'
+
+      Todo programa Go debe comenzar con una declaracion de paquete. Para un ejecutable, debe ser `package main`.
+
+  - type: syntax
+    errorMessage: "El codigo debe tener una funcion main."
+    check:
+      contains: "func main()"
+    failMessage: |
+      Error: runtime.main_main: function main is undeclared in the main package
+
+      Todo programa ejecutable en Go necesita una funcion `func main()` como punto de entrada.
+
+  - type: semantic
+    errorMessage: "No debe haber variables declaradas sin usar."
+    check:
+      any:
+        - not_contains: "upper :="
+        - custom: |
+            const hasUpperDecl = code.includes('upper :=') || code.includes('upper=');
+            if (!hasUpperDecl) return { passed: true };
+            const usesUpper = /upper[^:=]/.test(code.replace(/upper\s*:=.*/, '').replace(/upper\s*=.*/, ''));
+            if (!usesUpper) {
+              return {
+                passed: false,
+                errorMessage: "./main.go:13:2: upper declared and not used\n\nLa variable `upper` se declara pero nunca se usa. En Go esto es un error de compilacion. Debes usarla o eliminarla."
+              };
+            }
+            return { passed: true };
+    failMessage: |
+      ./main.go:13:2: upper declared and not used
+
+      La variable `upper` esta declarada pero no se utiliza en ninguna parte. Eliminala o usala.
+
+  - type: semantic
+    errorMessage: "No debe haber imports sin usar."
+    check:
+      custom: |
+        const hasStringsImport = /["']strings["']/.test(code);
+        if (!hasStringsImport) return { passed: true };
+        const codeWithoutImports = code.replace(/import\s*\([\s\S]*?\)/, '').replace(/import\s+"[^"]*"/, '');
+        if (!codeWithoutImports.includes('strings.')) {
+          return {
+            passed: false,
+            errorMessage: "./main.go:4:2: \"strings\" imported and not used\n\nEl paquete `strings` se importa pero no se usa en el codigo. Elimina el import o usa alguna funcion del paquete."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      ./main.go:4:2: "strings" imported and not used
+
+      El paquete `strings` esta importado pero no se usa. Eliminalo del bloque import.
+
+  - type: intention
+    errorMessage: "El programa debe imprimir un mensaje."
+    check:
+      contains: "fmt.Println"
+    failMessage: |
+      El programa debe imprimir un resultado usando fmt.Println.
+
+terminalCommands:
+  "go run main.go":
+    - when:
+        all:
+          - contains: "upper :="
+          - custom: |
+              const hasUpperDecl = code.includes('upper :=');
+              if (!hasUpperDecl) return false;
+              const afterDecl = code.split('upper :=')[1] || '';
+              const usesUpper = /\bupper\b/.test(afterDecl.replace(/^\s*strings\.ToUpper.*/, ''));
+              return !usesUpper;
+      output: |
+        # command-line-arguments
+        ./main.go:13:2: upper declared and not used
+      exitCode: 1
+
+    - when:
+        all:
+          - custom: |
+              const hasStringsImport = /["']strings["']/.test(code);
+              if (!hasStringsImport) return false;
+              const codeWithoutImports = code.replace(/import\s*\([\s\S]*?\)/, '').replace(/import\s+"[^"]*"/, '');
+              return !codeWithoutImports.includes('strings.');
+      output: |
+        # command-line-arguments
+        ./main.go:4:2: "strings" imported and not used
+      exitCode: 1
+
+    - output: |
+        Hello, World!
+      exitCode: 0
+
+  "go build":
+    - when:
+        all:
+          - contains: "upper :="
+          - custom: |
+              const hasUpperDecl = code.includes('upper :=');
+              if (!hasUpperDecl) return false;
+              const afterDecl = code.split('upper :=')[1] || '';
+              const usesUpper = /\bupper\b/.test(afterDecl.replace(/^\s*strings\.ToUpper.*/, ''));
+              return !usesUpper;
+      output: |
+        # command-line-arguments
+        ./main.go:13:2: upper declared and not used
+      exitCode: 1
+
+    - when:
+        all:
+          - custom: |
+              const hasStringsImport = /["']strings["']/.test(code);
+              if (!hasStringsImport) return false;
+              const codeWithoutImports = code.replace(/import\s*\([\s\S]*?\)/, '').replace(/import\s+"[^"]*"/, '');
+              return !codeWithoutImports.includes('strings.');
+      output: |
+        # command-line-arguments
+        ./main.go:4:2: "strings" imported and not used
+      exitCode: 1
+
+    - output: |
+        Build successful.
+      exitCode: 0
+
+  "go vet":
+    - when:
+        all:
+          - contains: "upper :="
+          - custom: |
+              const hasUpperDecl = code.includes('upper :=');
+              if (!hasUpperDecl) return false;
+              const afterDecl = code.split('upper :=')[1] || '';
+              const usesUpper = /\bupper\b/.test(afterDecl.replace(/^\s*strings\.ToUpper.*/, ''));
+              return !usesUpper;
+      output: |
+        # command-line-arguments
+        ./main.go:13:2: upper declared and not used
+      exitCode: 2
+
+    - output: |
+        No issues found.
+      exitCode: 0

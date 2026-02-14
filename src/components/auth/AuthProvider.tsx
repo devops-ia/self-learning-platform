@@ -16,6 +16,7 @@ export interface AuthUser {
   role: "admin" | "user" | "anonymous";
   avatarUrl: string | null;
   totpEnabled: boolean;
+  preferences?: { theme?: string; language?: string };
 }
 
 interface AuthContextType {
@@ -40,7 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch("/api/auth/me");
       const data = await res.json();
-      setUser(data.user || null);
+      if (data.user) {
+        const prefs = data.user.preferences ? JSON.parse(data.user.preferences) : undefined;
+        setUser({ ...data.user, preferences: prefs });
+      } else {
+        setUser(null);
+      }
     } catch {
       setUser(null);
     } finally {
@@ -51,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
+    window.location.href = "/";
   }, []);
 
   useEffect(() => {

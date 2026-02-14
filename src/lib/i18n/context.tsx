@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { es } from "./locales/es";
 import { en } from "./locales/en";
 
@@ -29,9 +30,12 @@ const I18nCtx = createContext<I18nContext>({
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [lang, setLangState] = useState<Lang>(DEFAULT_LANG);
   const [mounted, setMounted] = useState(false);
+  const appliedUserPref = useRef(false);
 
+  // On mount: read from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored && locales[stored]) {
@@ -40,13 +44,34 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
+  // When user loads with DB preference, apply it (once)
+  useEffect(() => {
+    if (user?.preferences?.language && locales[user.preferences.language] && !appliedUserPref.current) {
+      appliedUserPref.current = true;
+      setLangState(user.preferences.language);
+      localStorage.setItem(STORAGE_KEY, user.preferences.language);
+      document.documentElement.lang = user.preferences.language;
+    }
+    if (!user) {
+      appliedUserPref.current = false;
+    }
+  }, [user]);
+
   const setLang = useCallback((newLang: Lang) => {
     if (locales[newLang]) {
       setLangState(newLang);
       localStorage.setItem(STORAGE_KEY, newLang);
       document.documentElement.lang = newLang;
+      // Save to DB if logged in (fire and forget)
+      if (user) {
+        fetch("/api/auth/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ language: newLang }),
+        }).catch(() => {});
+      }
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (mounted) {
