@@ -188,7 +188,7 @@ docker restart learning-platform
 | [docs/exercises.md](docs/exercises.md) | Creating and importing exercises |
 | [docs/interview-guide.md](docs/interview-guide.md) | Conducting technical interviews with the platform |
 | [docs/development.md](docs/development.md) | Development setup and contribution guidelines |
-| [docs/production.md](docs/production-deployment.md) | Deploying to production environments |
+| [docs/production.md](docs/production.md) | Deploying to production environments |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 
 ## License
