@@ -1,10 +1,17 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import ProgressTracker from "@/components/progress/ProgressTracker";
-import { Terminal, Box, Cog, Settings, Server, Cloud, Database, Shield } from "lucide-react";
+import { Terminal, Box, Cog, Settings, Server, Cloud, Database, Shield, List, GitBranch } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
+import { useRequireAuth } from "@/lib/hooks/useRequireAuth";
+
+const ExerciseGraph = dynamic(() => import("@/components/progress/ExerciseGraph"), {
+  ssr: false,
+  loading: () => <div className="h-[500px] border border-[var(--border)] rounded-lg flex items-center justify-center text-[var(--muted)]">...</div>,
+});
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Terminal, Box, Cog, Settings, Server, Cloud, Database, Shield,
@@ -15,12 +22,14 @@ interface ModuleData {
   title: string;
   description: Record<string, string>;
   icon: string;
+  showDifficulty?: boolean;
 }
 
 interface ExerciseItem {
   id: string;
   title: string;
   prerequisites: string[];
+  difficulty?: string;
   i18n?: Record<string, { title?: string }>;
 }
 
@@ -31,10 +40,15 @@ export default function DynamicModulePage({
 }) {
   const { module } = use(params);
   const { lang, t } = useT();
+  const { loading: authLoading } = useRequireAuth();
   const [moduleData, setModuleData] = useState<ModuleData | null>(null);
   const [exercises, setExercises] = useState<ExerciseItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFoundState, setNotFoundState] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "graph">(() => {
+    if (typeof window === "undefined") return "list";
+    return (localStorage.getItem("devops-lab-view-mode") as "list" | "graph") || "list";
+  });
 
   useEffect(() => {
     fetch(`/api/modules/${module}/exercises`)
@@ -52,6 +66,11 @@ export default function DynamicModulePage({
       .finally(() => setLoading(false));
   }, [module]);
 
+  if (authLoading) {
+    return (
+      <div className="max-w-2xl mx-auto py-12 px-6 text-center text-[var(--muted)]">...</div>
+    );
+  }
   if (notFoundState) notFound();
   if (loading) {
     return (
@@ -60,12 +79,12 @@ export default function DynamicModulePage({
   }
   if (!moduleData) notFound();
 
-  const exercisesWithStatus = exercises.map((ex, i) => ({
-    ...ex,
-    status: i === 0 ? ("available" as const) : ("locked" as const),
-  }));
-
   const IconComponent = iconMap[moduleData.icon] || Terminal;
+
+  function toggleView(mode: "list" | "graph") {
+    setViewMode(mode);
+    localStorage.setItem("devops-lab-view-mode", mode);
+  }
 
   return (
     <div className="max-w-2xl mx-auto py-12 px-6">
@@ -77,8 +96,39 @@ export default function DynamicModulePage({
         {moduleData.description[lang] || Object.values(moduleData.description)[0]}
       </p>
 
-      <h2 className="text-lg font-semibold mb-4">{t.progress.exercises}</h2>
-      <ProgressTracker module={module} exercises={exercisesWithStatus} />
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">{t.progress.exercises}</h2>
+        <div className="flex border border-[var(--border)] rounded-lg overflow-hidden">
+          <button
+            onClick={() => toggleView("list")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
+              viewMode === "list"
+                ? "bg-[var(--accent)] text-white"
+                : "text-[var(--muted)] hover:bg-[var(--surface-hover)]"
+            }`}
+            title={t.progress.listView || "List view"}
+          >
+            <List className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => toggleView("graph")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors ${
+              viewMode === "graph"
+                ? "bg-[var(--accent)] text-white"
+                : "text-[var(--muted)] hover:bg-[var(--surface-hover)]"
+            }`}
+            title={t.progress.graphView || "Graph view"}
+          >
+            <GitBranch className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {viewMode === "list" ? (
+        <ProgressTracker module={module} exercises={exercises} showDifficulty={moduleData.showDifficulty} />
+      ) : (
+        <ExerciseGraph module={module} exercises={exercises} showDifficulty={moduleData.showDifficulty} />
+      )}
     </div>
   );
 }

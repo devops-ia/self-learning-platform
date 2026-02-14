@@ -1,6 +1,7 @@
 import { getIronSession, IronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionTTL } from "@/lib/settings";
 
 export interface SessionData {
   userId?: string;
@@ -14,29 +15,31 @@ export interface SessionData {
   pendingTotpSecret?: string;
 }
 
-const sessionOptions = {
-  password:
-    process.env.SESSION_SECRET ||
-    "dev-secret-change-me-in-production-32chars!!",
-  cookieName: "devops-lab-session",
-  ttl: Number(process.env.SESSION_TTL) || 604800,
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax" as const,
-  },
-};
+function getSessionOptions() {
+  return {
+    password:
+      process.env.SESSION_SECRET ||
+      "dev-secret-change-me-in-production-32chars!!",
+    cookieName: "devops-lab-session",
+    ttl: getSessionTTL(),
+    cookieOptions: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax" as const,
+    },
+  };
+}
 
 export async function getSession(): Promise<IronSession<SessionData>> {
   const cookieStore = await cookies();
-  return getIronSession<SessionData>(cookieStore, sessionOptions);
+  return getIronSession<SessionData>(cookieStore, getSessionOptions());
 }
 
 export async function getSessionFromRequest(
   req: NextRequest,
   res: NextResponse
 ): Promise<IronSession<SessionData>> {
-  return getIronSession<SessionData>(req, res, sessionOptions);
+  return getIronSession<SessionData>(req, res, getSessionOptions());
 }
 
 /** Get the current authenticated user ID, or null */

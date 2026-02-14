@@ -82,6 +82,7 @@ const exerciseYamlSchema = z.object({
   title: z.string().min(1),
   briefing: z.string().min(1),
   language: z.string().optional(),
+  difficulty: z.enum(["easy", "medium", "hard"]).optional(),
   prerequisites: z.array(z.string()).default([]),
   initialCode: z.string().min(1),
   hints: z.array(z.string()).min(1),
@@ -147,8 +148,8 @@ function main() {
   let errors = 0;
 
   const upsertExercise = sqlite.prepare(`
-    INSERT OR REPLACE INTO exercises (id, module_id, title, briefing, language, initial_code, prerequisites, hints, success_message, validations, terminal_commands, i18n, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO exercises (id, module_id, title, briefing, language, initial_code, prerequisites, hints, success_message, validations, terminal_commands, i18n, difficulty, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (const moduleName of Object.keys(modulesConfig.modules)) {
@@ -205,6 +206,7 @@ function main() {
         JSON.stringify(exercise.validations),
         JSON.stringify(exercise.terminalCommands),
         exercise.i18n ? JSON.stringify(exercise.i18n) : null,
+        exercise.difficulty || null,
         exSortOrder
       );
       console.log(`  ${moduleName}/${file} -> ${exercise.id}`);

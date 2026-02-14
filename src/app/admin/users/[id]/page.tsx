@@ -14,6 +14,7 @@ interface UserData {
   updatedAt: string | null;
   totpEnabled: boolean;
   emailVerified: boolean;
+  disabled: boolean;
 }
 
 export default function EditUserPage({
@@ -28,6 +29,10 @@ export default function EditUserPage({
   const [role, setRole] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [disabled, setDisabled] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [passwordMsg, setPasswordMsg] = useState("");
+  const [verifyMsg, setVerifyMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,6 +45,7 @@ export default function EditUserPage({
           setRole(data.user.role);
           setDisplayName(data.user.displayName || "");
           setUsername(data.user.username || "");
+          setDisabled(data.user.disabled || false);
         }
       });
   }, [id]);
@@ -52,7 +58,7 @@ export default function EditUserPage({
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, displayName, username }),
+        body: JSON.stringify({ role, displayName, username, disabled }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -64,6 +70,26 @@ export default function EditUserPage({
       setError("Failed to save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    if (newPassword.length < 8) return;
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    if (res.ok) {
+      setPasswordMsg(t.adminPanel.passwordUpdated || "Password updated");
+      setNewPassword("");
+    }
+  }
+
+  async function handleResendVerification() {
+    const res = await fetch(`/api/admin/users/${id}/verify-email`, { method: "POST" });
+    if (res.ok) {
+      setVerifyMsg(t.adminPanel.verificationSent || "Verification email sent");
     }
   }
 
@@ -135,6 +161,57 @@ export default function EditUserPage({
             <option value="admin">admin</option>
           </select>
         </div>
+
+        <div className="flex items-center justify-between p-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg">
+          <div>
+            <h3 className="font-medium">{t.adminPanel.disableUser || "Disable user"}</h3>
+            <p className="text-sm text-[var(--muted)]">{t.adminPanel.accountDisabled || "Disabled users cannot log in"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDisabled(!disabled)}
+            className={`relative w-12 h-6 rounded-full transition-colors ${disabled ? "bg-[var(--error)]" : "bg-[var(--border)]"}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${disabled ? "translate-x-6" : "translate-x-0"}`} />
+          </button>
+        </div>
+
+        <div className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg space-y-3">
+          <h3 className="font-medium">{t.adminPanel.resetPassword || "Reset password"}</h3>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder={t.auth.newPassword || "New password"}
+              minLength={8}
+              className="flex-1 px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded focus:outline-none focus:border-[var(--accent)] text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleResetPassword}
+              disabled={newPassword.length < 8}
+              className="px-4 py-2 bg-[var(--accent)] text-white rounded hover:bg-[var(--accent-hover)] transition-colors text-sm disabled:opacity-50"
+            >
+              {t.profile.save || "Save"}
+            </button>
+          </div>
+          {passwordMsg && <p className="text-sm text-[var(--success)]">{passwordMsg}</p>}
+        </div>
+
+        {user && !user.emailVerified && (
+          <div className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg space-y-3">
+            <h3 className="font-medium">{t.adminPanel.resendVerification || "Resend verification email"}</h3>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              className="px-4 py-2 bg-[var(--accent)] text-white rounded hover:bg-[var(--accent-hover)] transition-colors text-sm"
+            >
+              {t.adminPanel.resendVerification || "Resend verification"}
+            </button>
+            {verifyMsg && <p className="text-sm text-[var(--success)]">{verifyMsg}</p>}
+          </div>
+        )}
 
         <div className="text-xs text-[var(--muted)] space-y-1">
           <p>ID: {user.id}</p>

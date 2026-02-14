@@ -41,7 +41,7 @@ export function validateExercise(
     let result: ValidationResult;
     try {
       result = rule.check(code);
-    } catch (_e) {
+    } catch {
       result = {
         passed: false,
         errorMessage: `Error interno al validar: ${rule.errorMessage}`,

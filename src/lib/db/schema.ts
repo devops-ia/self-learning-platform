@@ -2,7 +2,8 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
-  email: text("email").unique(),
+  email: text("email"),
+  emailHash: text("email_hash").unique(),
   passwordHash: text("password_hash"),
   username: text("username").notNull().default("anonymous"),
   displayName: text("display_name"),
@@ -12,7 +13,9 @@ export const users = sqliteTable("users", {
   totpSecret: text("totp_secret"),
   totpEnabled: integer("totp_enabled", { mode: "boolean" }).notNull().default(false),
   emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+  disabled: integer("disabled", { mode: "boolean" }).notNull().default(false),
   avatarUrl: text("avatar_url"),
+  preferences: text("preferences"),
   createdAt: text("created_at").notNull().default(new Date().toISOString()),
   updatedAt: text("updated_at"),
 });
@@ -87,6 +90,8 @@ export const modules = sqliteTable("modules", {
   icon: text("icon").notNull().default("Terminal"),
   prefix: text("prefix").notNull(), // e.g. "tf", "k8s"
   language: text("language").notNull().default("yaml"),
+  showDifficulty: integer("show_difficulty", { mode: "boolean" }).notNull().default(false),
+  image: text("image"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(new Date().toISOString()),
 });
@@ -107,9 +112,17 @@ export const exercises = sqliteTable("exercises", {
   validations: text("validations").notNull(), // JSON array of Check DSL
   terminalCommands: text("terminal_commands").notNull(), // JSON object
   i18n: text("i18n"), // JSON: {en: {title?, briefing?, hints?, successMessage?}}
+  difficulty: text("difficulty"), // "easy" | "medium" | "hard" | null
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(new Date().toISOString()),
   updatedAt: text("updated_at"),
+});
+
+// Platform settings (key-value store)
+export const settings = sqliteTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull().default(new Date().toISOString()),
 });
 
 // Rate limiting table
@@ -118,4 +131,25 @@ export const rateLimits = sqliteTable("rate_limits", {
   key: text("key").notNull(), // e.g. "login:192.168.1.1"
   attempts: integer("attempts").notNull().default(0),
   windowStart: text("window_start").notNull(),
+});
+
+// Email verification tokens
+export const emailVerificationTokens = sqliteTable("email_verification_tokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  token: text("token").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull().default(new Date().toISOString()),
+});
+
+// Password reset tokens
+export const passwordResetTokens = sqliteTable("password_reset_tokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  used: integer("used", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().default(new Date().toISOString()),
 });

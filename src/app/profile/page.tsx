@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/AuthProvider";
-import { useT } from "@/lib/i18n/context";
+import { useT, availableLanguages } from "@/lib/i18n/context";
+import { useTheme } from "@/lib/theme/context";
 import { Shield } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, refresh } = useAuth();
-  const { t } = useT();
+  const { t, lang, setLang } = useT();
+  const { theme, toggleTheme } = useTheme();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
@@ -108,6 +110,47 @@ export default function ProfilePage() {
           {saving ? t.profile.saving : saved ? t.profile.saved : t.profile.save}
         </button>
       </form>
+
+      <div className="mt-8 pt-8 border-t border-[var(--border)]">
+        <h2 className="text-lg font-semibold mb-4">{t.profile.preferences}</h2>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[var(--muted)]">
+              {t.profile.language}
+            </label>
+            <select
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
+            >
+              {availableLanguages.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1 text-[var(--muted)]">
+              {t.profile.theme}
+            </label>
+            <select
+              value={theme}
+              onChange={(e) => {
+                if (e.target.value !== theme) {
+                  toggleTheme();
+                }
+              }}
+              className="w-full px-3 py-2 bg-[var(--surface)] border border-[var(--border)] rounded text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
+            >
+              <option value="dark">{t.profile.themeDark}</option>
+              <option value="light">{t.profile.themeLight}</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-8 pt-8 border-t border-[var(--border)]">
         <Link

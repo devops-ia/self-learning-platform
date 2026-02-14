@@ -29,6 +29,9 @@ COPY drizzle.config.ts ./
 # Build application
 RUN npm run build
 
+# Compile seed script to CJS for Docker runtime (no tsx needed)
+RUN npx esbuild src/lib/db/seed.ts --bundle --platform=node --outfile=scripts/docker-seed.cjs --external:better-sqlite3 --external:argon2 --format=cjs
+
 # =======================
 # Stage 2: Database Init
 # =======================
@@ -92,4 +95,4 @@ USER nextjs
 
 # Start the Next.js application
 # Use wrapper script to ensure binding to HOST:PORT
-CMD ["sh", "-c", "node ./scripts/seed.js 2>/dev/null || true && node ./scripts/start-server.js"]
+CMD ["sh", "-c", "node ./scripts/docker-seed.cjs 2>/dev/null || true && node ./scripts/start-server.js"]

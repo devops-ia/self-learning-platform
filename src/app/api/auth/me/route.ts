@@ -3,18 +3,20 @@ import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { safeDecrypt } from "@/lib/crypto";
+import { getOAuthGoogleClientId, getOAuthGoogleClientSecret, getOAuthGithubClientId, getOAuthGithubClientSecret, getOAuthAzureClientId, getOAuthAzureClientSecret } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
 function getEnabledProviders(): string[] {
   const providers: string[] = [];
-  if (process.env.OAUTH_GOOGLE_CLIENT_ID && process.env.OAUTH_GOOGLE_CLIENT_SECRET) {
+  if (getOAuthGoogleClientId() && getOAuthGoogleClientSecret()) {
     providers.push("google");
   }
-  if (process.env.OAUTH_GITHUB_CLIENT_ID && process.env.OAUTH_GITHUB_CLIENT_SECRET) {
+  if (getOAuthGithubClientId() && getOAuthGithubClientSecret()) {
     providers.push("github");
   }
-  if (process.env.OAUTH_AZURE_CLIENT_ID && process.env.OAUTH_AZURE_CLIENT_SECRET) {
+  if (getOAuthAzureClientId() && getOAuthAzureClientSecret()) {
     providers.push("azure");
   }
   return providers;
@@ -37,6 +39,7 @@ export async function GET() {
       role: users.role,
       avatarUrl: users.avatarUrl,
       totpEnabled: users.totpEnabled,
+      preferences: users.preferences,
     })
     .from(users)
     .where(eq(users.id, session.userId))
@@ -47,5 +50,12 @@ export async function GET() {
     return NextResponse.json({ user: null, oauthProviders });
   }
 
-  return NextResponse.json({ user, oauthProviders });
+  return NextResponse.json({
+    user: {
+      ...user,
+      email: safeDecrypt(user.email),
+      displayName: safeDecrypt(user.displayName),
+    },
+    oauthProviders,
+  });
 }

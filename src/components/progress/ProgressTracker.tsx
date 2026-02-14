@@ -4,59 +4,65 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle, Lock, Circle } from "lucide-react";
 import { useT } from "@/lib/i18n/context";
+import { useAuth } from "@/components/auth/AuthProvider";
 
-interface ExerciseStatus {
+interface ExerciseItem {
   id: string;
   title: string;
-  status: "locked" | "available" | "completed";
   prerequisites: string[];
+  difficulty?: string;
 }
 
 interface ProgressTrackerProps {
   module: string;
-  exercises: ExerciseStatus[];
+  exercises: ExerciseItem[];
+  showDifficulty?: boolean;
 }
+
+const difficultyColors: Record<string, string> = {
+  easy: "bg-green-500/20 text-green-400 border-green-500/30",
+  medium: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  hard: "bg-red-500/20 text-red-400 border-red-500/30",
+};
 
 export default function ProgressTracker({
   module,
   exercises,
+  showDifficulty,
 }: ProgressTrackerProps) {
   const { t } = useT();
+  const { user } = useAuth();
   const [statuses, setStatuses] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const userId = localStorage.getItem("devops-lab-user-id");
-    if (!userId) {
-      // No user yet, set first exercise as available
-      const initial: Record<string, string> = {};
-      exercises.forEach((ex, i) => {
-        initial[ex.id] = i === 0 ? "available" : "locked";
+    // Compute default statuses from prerequisites:
+    // exercises with no prerequisites are available, others are locked
+    function defaultStatuses(): Record<string, string> {
+      const map: Record<string, string> = {};
+      exercises.forEach((ex) => {
+        map[ex.id] = ex.prerequisites.length === 0 ? "available" : "locked";
       });
-      setStatuses(initial);
+      return map;
+    }
+
+    if (!user?.id) {
+      setStatuses(defaultStatuses());
       return;
     }
 
-    fetch(`/api/progress?userId=${userId}&module=${module}`)
+    fetch(`/api/progress?module=${module}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.progress && Object.keys(data.progress).length > 0) {
           setStatuses(data.progress);
         } else {
-          const initial: Record<string, string> = {};
-          exercises.forEach((ex, i) => {
-            initial[ex.id] = i === 0 ? "available" : "locked";
-          });
-          setStatuses(initial);
+          setStatuses(defaultStatuses());
         }
       })
       .catch(() => {
-        const initial: Record<string, string> = {};
-        exercises.forEach((ex, i) => {
-          initial[ex.id] = i === 0 ? "available" : "locked";
-        });
-        setStatuses(initial);
+        setStatuses(defaultStatuses());
       });
-  }, [module, exercises]);
+  }, [module, exercises, user]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -80,10 +86,28 @@ export default function ProgressTracker({
     }
   };
 
+  const getDifficultyLabel = (difficulty: string) => {
+    const labels: Record<string, string> = {
+      easy: t.difficulty?.easy || "Easy",
+      medium: t.difficulty?.medium || "Medium",
+      hard: t.difficulty?.hard || "Hard",
+    };
+    return labels[difficulty] || difficulty;
+  };
+
+  function DifficultyBadge({ difficulty }: { difficulty?: string }) {
+    if (!showDifficulty || !difficulty || !difficultyColors[difficulty]) return null;
+    return (
+      <span className={`text-xs px-2 py-0.5 rounded border ${difficultyColors[difficulty]}`}>
+        {getDifficultyLabel(difficulty)}
+      </span>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {exercises.map((exercise, index) => {
-        const status = statuses[exercise.id] || exercise.status;
+        const status = statuses[exercise.id] || (exercise.prerequisites.length === 0 ? "available" : "locked");
         const isAccessible = status === "available" || status === "completed";
 
         return (
@@ -101,12 +125,15 @@ export default function ProgressTracker({
                 <div className="flex items-center gap-3">
                   {getStatusIcon(status)}
                   <div className="flex-1">
-                    <div className="font-medium">{exercise.title}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{exercise.title}</span>
+                      <DifficultyBadge difficulty={exercise.difficulty} />
+                    </div>
                     <div className="text-sm text-[var(--muted)]">
                       {getStatusLabel(status)}
                     </div>
                   </div>
-                  <span className="text-sm text-[var(--muted)]">→</span>
+                  <span className="text-sm text-[var(--muted)]">&rarr;</span>
                 </div>
               </Link>
             ) : (
@@ -114,7 +141,10 @@ export default function ProgressTracker({
                 <div className="flex items-center gap-3">
                   {getStatusIcon(status)}
                   <div className="flex-1">
-                    <div className="font-medium">{exercise.title}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{exercise.title}</span>
+                      <DifficultyBadge difficulty={exercise.difficulty} />
+                    </div>
                     <div className="text-sm text-[var(--muted)]">
                       {getStatusLabel(status)}
                       {exercise.prerequisites.length > 0 &&

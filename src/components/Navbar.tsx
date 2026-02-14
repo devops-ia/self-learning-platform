@@ -7,26 +7,28 @@ import { useTheme } from "@/lib/theme/context";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { Sun, Moon, User, LogOut, Shield, ChevronDown } from "lucide-react";
 
-interface ModuleInfo {
-  id: string;
-  title: string;
-}
-
 export default function Navbar() {
   const { lang, setLang, t } = useT();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const [modules, setModules] = useState<ModuleInfo[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
+  const [platformTitle, setPlatformTitle] = useState("");
 
   useEffect(() => {
-    fetch("/api/modules")
+    const cached = localStorage.getItem("devops-lab-platform-title");
+    if (cached) setPlatformTitle(cached);
+    fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
-        if (data.modules) setModules(data.modules);
+        setIsDemo(!!data.demoMode);
+        const title = data.platformTitle || t.nav.home;
+        setPlatformTitle(title);
+        localStorage.setItem("devops-lab-platform-title", title);
       })
       .catch(() => {});
-  }, []);
+  }, [t.nav.home]);
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,21 +43,17 @@ export default function Navbar() {
 
   return (
     <nav className="border-b border-[var(--border)] px-6 py-3 flex items-center justify-between">
-      <Link href="/" className="text-lg font-semibold tracking-tight">
-        {t.nav.home}
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link href="/" className="text-lg font-semibold tracking-tight">
+          {platformTitle || t.nav.home}
+        </Link>
+        {isDemo && (
+          <span className="text-xs font-medium px-2 py-1 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400">
+            {t.nav.demo}
+          </span>
+        )}
+      </div>
       <div className="flex items-center gap-6 text-sm">
-        <div className="flex gap-6 text-[var(--muted)]">
-          {modules.map((m) => (
-            <Link
-              key={m.id}
-              href={`/modules/${m.id}`}
-              className="hover:text-[var(--foreground)] transition-colors"
-            >
-              {m.title}
-            </Link>
-          ))}
-        </div>
         <select
           value={lang}
           onChange={(e) => setLang(e.target.value)}
@@ -79,59 +77,63 @@ export default function Navbar() {
           )}
         </button>
 
-        {user ? (
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-1 text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
-            >
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline max-w-[100px] truncate">
-                {user.displayName || user.username}
-              </span>
-              <ChevronDown className="w-3 h-3" />
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg py-1 z-50">
-                <Link
-                  href="/profile"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
+        {!isDemo && (
+          <>
+            {user ? (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="flex items-center gap-1 text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
                 >
                   <User className="w-4 h-4" />
-                  {t.auth.myAccount}
-                </Link>
-                {user.role === "admin" && (
-                  <Link
-                    href="/admin"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
-                  >
-                    <Shield className="w-4 h-4" />
-                    {t.auth.admin}
-                  </Link>
-                )}
-                <hr className="my-1 border-[var(--border)]" />
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    logout();
-                  }}
-                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-[var(--error)] hover:bg-[var(--surface-hover)] transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  {t.auth.logout}
+                  <span className="hidden sm:inline max-w-[100px] truncate">
+                    {user.displayName || user.username}
+                  </span>
+                  <ChevronDown className="w-3 h-3" />
                 </button>
+                {menuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg py-1 z-50">
+                    <Link
+                      href="/profile"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      {t.auth.myAccount}
+                    </Link>
+                    {user.role === "admin" && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
+                      >
+                        <Shield className="w-4 h-4" />
+                        {t.auth.admin}
+                      </Link>
+                    )}
+                    <hr className="my-1 border-[var(--border)]" />
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        logout();
+                      }}
+                      className="flex items-center gap-2 w-full px-4 py-2 text-sm text-[var(--error)] hover:bg-[var(--surface-hover)] transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      {t.auth.logout}
+                    </button>
+                  </div>
+                )}
               </div>
+            ) : (
+              <Link
+                href="/login"
+                className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
+              >
+                {t.auth.login}
+              </Link>
             )}
-          </div>
-        ) : (
-          <Link
-            href="/login"
-            className="text-[var(--muted)] hover:text-[var(--foreground)] transition-colors"
-          >
-            {t.auth.login}
-          </Link>
+          </>
         )}
       </div>
     </nav>

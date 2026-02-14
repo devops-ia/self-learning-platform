@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/lib/i18n/context";
-import { Users, ScrollText, BookOpen, Layers } from "lucide-react";
+import { Users, ScrollText, BookOpen, Layers, Settings } from "lucide-react";
 
 export default function AdminPage() {
   const { t } = useT();
@@ -60,6 +60,18 @@ export default function AdminPage() {
             <h2 className="font-semibold">{t.adminPanel.modules || "Modules"}</h2>
             <p className="text-sm text-[var(--muted)]">
               {t.adminPanel.modulesDesc || "Manage technology modules"}
+            </p>
+          </div>
+        </Link>
+        <Link
+          href="/admin/settings"
+          className="flex items-center gap-4 p-6 bg-[var(--surface)] border border-[var(--border)] rounded-lg hover:bg-[var(--surface-hover)] transition-colors"
+        >
+          <Settings className="w-8 h-8 text-[var(--accent)]" />
+          <div>
+            <h2 className="font-semibold">{t.adminPanel.settings || "Settings"}</h2>
+            <p className="text-sm text-[var(--muted)]">
+              {t.adminPanel.settingsDesc || "Platform configuration"}
             </p>
           </div>
         </Link>

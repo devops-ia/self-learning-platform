@@ -1,0 +1,150 @@
+# =============================================================================
+# Exercise Template
+# =============================================================================
+# Copy this file to exercises/<module>/NN-slug.yaml and fill in the values.
+# Run: npm run exercises:import
+#
+# ID format: <prefix>-<NN>-<slug>
+#   - prefix: defined in _modules.yaml (tf, k8s, ans, etc.)
+#   - NN: two-digit sequential number (01, 02, 03...)
+#   - slug: lowercase, hyphen-separated description
+#
+# Default text is in Spanish (Spain, tu form).
+# Add translations in the optional i18n block below.
+# =============================================================================
+
+id: "prefix-NN-slug"
+title: "Titulo del ejercicio"
+briefing: "1-2 frases explicando que esta roto y por que importa."
+
+# Exercise IDs that must be completed first. Empty = unlocked by default.
+prerequisites: []
+# prerequisites: ["tf-01-broken-provider"]
+
+# Language override (optional). Defaults to the module's language in _modules.yaml.
+# language: "hcl"
+
+# The broken code the student starts with
+initialCode: |
+  # Your intentionally broken code here
+  # The student must find and fix the errors
+
+# Progressive hints - unlocked after repeated failures (1 per 2 failures)
+hints:
+  - "Primera pista: orientacion general sin revelar la solucion."
+  - "Segunda pista: mas especifica, apunta a la causa raiz."
+  - "Tercera pista: casi la solucion completa."
+
+# Shown when all validations pass
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - Punto 1
+  - Punto 2
+  - Punto 3
+
+# =============================================================================
+# Translations (optional)
+# =============================================================================
+# Add translations for other languages. Each key is a language code.
+# Only include the fields you want to translate.
+# =============================================================================
+
+# i18n:
+#   en:
+#     title: "Exercise title in English"
+#     briefing: "1-2 sentences explaining what's broken and why it matters."
+#     hints:
+#       - "First hint: general guidance without revealing the solution."
+#       - "Second hint: more specific, points to root cause."
+#       - "Third hint: almost the complete solution."
+#     successMessage: |
+#       Correct!
+#
+#       What you learned:
+#       - Point 1
+#       - Point 2
+
+# =============================================================================
+# Validations
+# =============================================================================
+# Each validation has:
+#   type: "syntax" | "semantic" | "intention"
+#   errorMessage: short description of the rule
+#   check: declarative condition that must be TRUE for the rule to PASS
+#   failMessage: detailed error shown when the check fails
+#
+# Available checks:
+#   contains: "string"              - code includes this string
+#   not_contains: "string"          - code does NOT include this string
+#   match: "regex"                  - code matches this regex
+#   not_match: "regex"              - code does NOT match this regex
+#   yaml_valid: true                - YAML parses successfully
+#   yaml_has: "path.to.field"       - nested field exists in parsed YAML
+#   yaml_not_has: "path.to.field"   - nested field does NOT exist
+#   yaml_is_array: "path.to.field"  - field is an array
+#   yaml_equals:                    - field equals a specific value
+#     path: "path.to.field"
+#     value: "expected"
+#   yaml_items_have:                - each item in array has required fields
+#     path: "path.to.array"
+#     fields: ["field1", "field2"]
+#
+# Combinators:
+#   all: [check1, check2]           - all must be true (AND)
+#   any: [check1, check2]           - at least one true (OR)
+#   not: { check }                  - negation
+#
+# Escape hatch (for complex logic):
+#   custom: |
+#     // TypeScript code. Receives 'code' (string).
+#     // For YAML exercises, 'yaml' module is available.
+#     // Must return { passed: boolean, errorMessage?: string }
+#     if (someCondition) {
+#       return { passed: false, errorMessage: "Explanation" };
+#     }
+#     return { passed: true };
+# =============================================================================
+
+validations:
+  - type: syntax
+    errorMessage: "Descripcion corta de la regla."
+    check:
+      contains: "expected_string"
+    failMessage: |
+      Error: Realistic CLI error message
+
+      Explicacion en espanol de que esta mal y como arreglarlo.
+
+  - type: semantic
+    errorMessage: "Otra regla."
+    check:
+      match: "regex_pattern"
+    failMessage: |
+      Error: Another realistic error
+
+      Explicacion detallada.
+
+# =============================================================================
+# Terminal Commands
+# =============================================================================
+# Each command is a list of condition-response pairs, evaluated top to bottom.
+# The last entry (without 'when') is the default response.
+#
+# 'when' uses the same check syntax as validations.
+# =============================================================================
+
+terminalCommands:
+  "command to simulate":
+    - when:
+        not_contains: "expected_fix"
+      output: |
+        Error: Realistic error output
+        matching the real CLI format
+      exitCode: 1
+
+    - output: |
+        Success: Command completed
+        realistic success output
+      exitCode: 0

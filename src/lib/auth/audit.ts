@@ -14,7 +14,8 @@ export type AuditAction =
   | "passkey_remove"
   | "oauth_link"
   | "admin_user_edit"
-  | "admin_user_delete";
+  | "admin_user_delete"
+  | "admin_resend_verification";
 
 export function logAudit(
   action: AuditAction,

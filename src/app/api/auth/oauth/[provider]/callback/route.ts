@@ -5,8 +5,7 @@ import { getSession } from "@/lib/auth/session";
 import { findOrCreateOAuthUser } from "@/lib/auth/oauth";
 import { logAudit } from "@/lib/auth/audit";
 import type { OAuthProfile } from "@/lib/auth/passport/google";
-
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+import { getBaseUrl, getOAuthGoogleClientId, getOAuthGoogleClientSecret, getOAuthGithubClientId, getOAuthGithubClientSecret, getOAuthAzureClientId, getOAuthAzureClientSecret, getOAuthAzureTenant } from "@/lib/settings";
 
 async function exchangeCodeForProfile(
   provider: string,
@@ -25,14 +24,15 @@ async function exchangeCodeForProfile(
 }
 
 async function exchangeGoogle(code: string): Promise<OAuthProfile | null> {
-  const callback = `${BASE_URL}${process.env.OAUTH_GOOGLE_CALLBACK || "/api/auth/oauth/google/callback"}`;
+  const baseUrl = getBaseUrl();
+  const callback = `${baseUrl}${process.env.OAUTH_GOOGLE_CALLBACK || "/api/auth/oauth/google/callback"}`;
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: process.env.OAUTH_GOOGLE_CLIENT_ID!,
-      client_secret: process.env.OAUTH_GOOGLE_CLIENT_SECRET!,
+      client_id: getOAuthGoogleClientId(),
+      client_secret: getOAuthGoogleClientSecret(),
       redirect_uri: callback,
       grant_type: "authorization_code",
     }),
@@ -67,8 +67,8 @@ async function exchangeGitHub(code: string): Promise<OAuthProfile | null> {
         Accept: "application/json",
       },
       body: JSON.stringify({
-        client_id: process.env.OAUTH_GITHUB_CLIENT_ID!,
-        client_secret: process.env.OAUTH_GITHUB_CLIENT_SECRET!,
+        client_id: getOAuthGithubClientId(),
+        client_secret: getOAuthGithubClientSecret(),
         code,
       }),
     }
@@ -110,8 +110,9 @@ async function exchangeGitHub(code: string): Promise<OAuthProfile | null> {
 }
 
 async function exchangeAzure(code: string): Promise<OAuthProfile | null> {
-  const tenant = process.env.OAUTH_AZURE_TENANT || "common";
-  const callback = `${BASE_URL}${process.env.OAUTH_AZURE_CALLBACK || "/api/auth/oauth/azure/callback"}`;
+  const tenant = getOAuthAzureTenant();
+  const baseUrl = getBaseUrl();
+  const callback = `${baseUrl}${process.env.OAUTH_AZURE_CALLBACK || "/api/auth/oauth/azure/callback"}`;
 
   const tokenRes = await fetch(
     `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,
@@ -120,8 +121,8 @@ async function exchangeAzure(code: string): Promise<OAuthProfile | null> {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         code,
-        client_id: process.env.OAUTH_AZURE_CLIENT_ID!,
-        client_secret: process.env.OAUTH_AZURE_CLIENT_SECRET!,
+        client_id: getOAuthAzureClientId(),
+        client_secret: getOAuthAzureClientSecret(),
         redirect_uri: callback,
         grant_type: "authorization_code",
         scope: "openid email profile",
@@ -157,15 +158,17 @@ export async function GET(
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
+  const baseUrl = getBaseUrl();
+
   if (error) {
     return NextResponse.redirect(
-      new URL(`/login?error=oauth_${error}`, BASE_URL)
+      new URL(`/login?error=oauth_${error}`, baseUrl)
     );
   }
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_missing_params", BASE_URL)
+      new URL("/login?error=oauth_missing_params", baseUrl)
     );
   }
 
@@ -176,7 +179,7 @@ export async function GET(
 
   if (!storedState || storedState !== state) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_state_mismatch", BASE_URL)
+      new URL("/login?error=oauth_state_mismatch", baseUrl)
     );
   }
 
@@ -189,7 +192,7 @@ export async function GET(
     .digest("hex");
   if (hmac !== expectedHmac) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_invalid_state", BASE_URL)
+      new URL("/login?error=oauth_invalid_state", baseUrl)
     );
   }
 
@@ -197,7 +200,7 @@ export async function GET(
   const profile = await exchangeCodeForProfile(provider, code);
   if (!profile) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_exchange_failed", BASE_URL)
+      new URL("/login?error=oauth_exchange_failed", baseUrl)
     );
   }
 
@@ -222,5 +225,5 @@ export async function GET(
     details: { provider },
   });
 
-  return NextResponse.redirect(new URL("/", BASE_URL));
+  return NextResponse.redirect(new URL("/", baseUrl));
 }

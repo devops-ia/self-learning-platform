@@ -1,0 +1,225 @@
+id: "go-04-race-condition"
+title: "Race condition en mapa concurrente"
+briefing: "El programa usa un mapa compartido entre multiples goroutines sin sincronizacion. Las escrituras concurrentes al mapa causan un error fatal en tiempo de ejecucion. Necesitas proteger el acceso con un mutex."
+prerequisites: []
+language: "go"
+difficulty: "hard"
+initialCode: |
+  package main
+
+  import (
+  	"fmt"
+  	"sync"
+  )
+
+  type Counter struct {
+  	counts map[string]int
+  }
+
+  func NewCounter() *Counter {
+  	return &Counter{counts: make(map[string]int)}
+  }
+
+  func (c *Counter) Increment(key string) {
+  	c.counts[key]++
+  }
+
+  func (c *Counter) Get(key string) int {
+  	return c.counts[key]
+  }
+
+  func main() {
+  	counter := NewCounter()
+  	var wg sync.WaitGroup
+
+  	for i := 0; i < 100; i++ {
+  		wg.Add(1)
+  		go func() {
+  			defer wg.Done()
+  			counter.Increment("hits")
+  		}()
+  	}
+
+  	wg.Wait()
+  	fmt.Printf("Total hits: %d\n", counter.Get("hits"))
+  }
+
+hints:
+  - "Los mapas en Go no son seguros para acceso concurrente. Cuando multiples goroutines escriben en un mapa al mismo tiempo, Go detecta la condicion de carrera y hace panic."
+  - "Necesitas anadir un `sync.Mutex` o `sync.RWMutex` al struct `Counter` y bloquear/desbloquear el mutex en los metodos `Increment` y `Get`."
+  - "Solucion: anade `mu sync.Mutex` al struct Counter. En Increment, usa `c.mu.Lock()` y `defer c.mu.Unlock()` antes de modificar el mapa. En Get, usa lo mismo (o `sync.RWMutex` con `c.mu.RLock()`/`c.mu.RUnlock()` para lecturas)."
+successMessage: |
+  !Correcto! El mapa esta protegido y el programa es seguro para uso concurrente.
+
+  Lo que aprendiste:
+  - Los mapas en Go no son thread-safe: las escrituras concurrentes causan un panic fatal
+  - `sync.Mutex` proporciona exclusion mutua para proteger secciones criticas
+  - `sync.RWMutex` permite multiples lectores simultaneos pero solo un escritor
+  - Siempre usa `defer mu.Unlock()` para garantizar que el mutex se libera
+  - Alternativas: `sync.Map` (optimizado para ciertos patrones) o canales para comunicacion
+  - Usa `go run -race` para detectar condiciones de carrera durante el desarrollo
+
+i18n:
+  en:
+    title: "Concurrent map race condition"
+    briefing: "The program uses a shared map across multiple goroutines without synchronization. Concurrent map writes cause a fatal runtime error. You need to protect access with a mutex."
+    hints:
+      - "Maps in Go are not safe for concurrent access. When multiple goroutines write to a map at the same time, Go detects the race condition and panics."
+      - "You need to add a `sync.Mutex` or `sync.RWMutex` to the `Counter` struct and lock/unlock the mutex in the `Increment` and `Get` methods."
+      - "Solution: add `mu sync.Mutex` to the Counter struct. In Increment, use `c.mu.Lock()` and `defer c.mu.Unlock()` before modifying the map. In Get, use the same (or `sync.RWMutex` with `c.mu.RLock()`/`c.mu.RUnlock()` for reads)."
+    successMessage: |
+      Correct! The map is protected and the program is safe for concurrent use.
+
+      What you learned:
+      - Maps in Go are not thread-safe: concurrent writes cause a fatal panic
+      - `sync.Mutex` provides mutual exclusion to protect critical sections
+      - `sync.RWMutex` allows multiple simultaneous readers but only one writer
+      - Always use `defer mu.Unlock()` to ensure the mutex is released
+      - Alternatives: `sync.Map` (optimized for certain patterns) or channels for communication
+      - Use `go run -race` to detect race conditions during development
+
+validations:
+  - type: syntax
+    errorMessage: "El codigo debe contener el paquete main."
+    check:
+      contains: "package main"
+    failMessage: |
+      Error: expected 'package', found 'EOF'
+
+      Todo programa Go debe comenzar con `package main`.
+
+  - type: syntax
+    errorMessage: "El codigo debe tener una funcion main."
+    check:
+      contains: "func main()"
+    failMessage: |
+      Error: runtime.main_main: function main is undeclared in the main package
+
+  - type: semantic
+    errorMessage: "El struct Counter debe tener un mutex para sincronizacion."
+    check:
+      any:
+        - match: "sync\\.Mutex"
+        - match: "sync\\.RWMutex"
+    failMessage: |
+      fatal error: concurrent map writes
+
+      goroutine 18 [running]:
+      main.(*Counter).Increment(0xc0000b4000, {0x49e1f8, 0x4})
+      	/tmp/main.go:16 +0x64
+      created by main.main in goroutine 1
+      	/tmp/main.go:29 +0x9c
+
+      El mapa se accede desde multiples goroutines sin sincronizacion. Anade un sync.Mutex o sync.RWMutex al struct Counter.
+
+  - type: semantic
+    errorMessage: "El metodo Increment debe bloquear el mutex antes de escribir en el mapa."
+    check:
+      custom: |
+        const hasLock = /\.Lock\(\)/.test(code);
+        const hasUnlock = /\.Unlock\(\)/.test(code);
+        if (!hasLock || !hasUnlock) {
+          return {
+            passed: false,
+            errorMessage: "El metodo Increment modifica el mapa pero no usa Lock()/Unlock(). Debes bloquear el mutex antes de escribir y desbloquearlo despues."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      El metodo Increment necesita Lock()/Unlock() para proteger la escritura concurrente en el mapa.
+
+  - type: intention
+    errorMessage: "El metodo Get tambien debe proteger la lectura del mapa."
+    check:
+      custom: |
+        const getMethod = code.match(/func\s*\(c\s*\*Counter\)\s*Get[\s\S]*?\n\}/);
+        if (!getMethod) return { passed: true };
+        const getBody = getMethod[0];
+        const hasReadLock = /RLock|Lock/.test(getBody);
+        if (!hasReadLock) {
+          return {
+            passed: false,
+            errorMessage: "WARNING: el metodo Get lee el mapa sin proteccion. Aunque la escritura esta protegida, leer un mapa concurrentemente con escrituras tambien es inseguro. Usa RLock()/RUnlock() o Lock()/Unlock() en Get."
+          };
+        }
+        return { passed: true };
+    failMessage: |
+      El metodo Get deberia proteger la lectura del mapa con RLock()/RUnlock() o Lock()/Unlock().
+
+terminalCommands:
+  "go run main.go":
+    - when:
+        not_match: "sync\\.(RW)?Mutex"
+      output: |
+        fatal error: concurrent map writes
+
+        goroutine 18 [running]:
+        main.(*Counter).Increment(0xc0000b4000, {0x49e1f8, 0x4})
+        	/tmp/main.go:16 +0x64
+        created by main.main in goroutine 1
+        	/tmp/main.go:29 +0x9c
+
+        goroutine 1 [semacquire]:
+        sync.runtime_Semacquire(0xc0000b4010?)
+        	/usr/local/go/src/runtime/sema.go:62 +0x25
+        sync.(*WaitGroup).Wait(0x4?)
+        	/usr/local/go/src/sync/waitgroup.go:116 +0x48
+        main.main()
+        	/tmp/main.go:33 +0xb4
+        exit status 2
+      exitCode: 2
+
+    - when:
+        not_match: "\\.(R?Lock|R?Unlock)\\(\\)"
+      output: |
+        fatal error: concurrent map writes
+
+        goroutine 22 [running]:
+        main.(*Counter).Increment(0xc0000b4000, {0x49e1f8, 0x4})
+        	/tmp/main.go:17 +0x74
+        exit status 2
+      exitCode: 2
+
+    - output: |
+        Total hits: 100
+      exitCode: 0
+
+  "go run -race main.go":
+    - when:
+        not_match: "sync\\.(RW)?Mutex"
+      output: |
+        ==================
+        WARNING: DATA RACE
+        Read at 0x00c0000b4060 by goroutine 8:
+          main.(*Counter).Increment()
+              /tmp/main.go:16 +0x7c
+
+        Previous write at 0x00c0000b4060 by goroutine 7:
+          main.(*Counter).Increment()
+              /tmp/main.go:16 +0x96
+
+        Goroutine 8 (running) created at:
+          main.main()
+              /tmp/main.go:29 +0x9c
+
+        Goroutine 7 (running) created at:
+          main.main()
+              /tmp/main.go:29 +0x9c
+        ==================
+        fatal error: concurrent map writes
+        exit status 66
+      exitCode: 66
+
+    - output: |
+        Total hits: 100
+      exitCode: 0
+
+  "go build":
+    - output: |
+        Build successful.
+      exitCode: 0
+
+  "go vet":
+    - output: |
+        No issues found.
+      exitCode: 0

@@ -1,0 +1,244 @@
+id: "k8s-03-deployment-no-selector"
+title: "Deployment sin selector"
+briefing: "Este Deployment no tiene spec.selector y el API server lo rechaza. Es un campo obligatorio en apps/v1 que indica qué Pods gestiona el Deployment."
+prerequisites: []
+language: "yaml"
+difficulty: "medium"
+initialCode: |
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: nginx-deploy
+  spec:
+    replicas: 3
+    template:
+      metadata:
+        labels:
+          app: nginx
+      spec:
+        containers:
+          - name: nginx
+            image: nginx:1.25
+            ports:
+              - containerPort: 80
+
+hints:
+  - "El error dice spec.selector: Required value. En apps/v1, un Deployment necesita un campo selector para saber qué Pods le pertenecen."
+  - "El selector usa matchLabels para encontrar Pods. Las labels del selector deben coincidir exactamente con las labels del template (app: nginx)."
+  - "Solución: añade un bloque selector debajo de replicas, al mismo nivel:\n  selector:\n    matchLabels:\n      app: nginx"
+successMessage: |
+  ¡Perfecto! El Deployment ahora puede gestionar sus Pods correctamente.
+
+  Lo que aprendiste:
+  - En apps/v1, spec.selector es obligatorio en un Deployment
+  - selector.matchLabels indica qué Pods pertenecen al Deployment
+  - Las labels del selector deben coincidir con spec.template.metadata.labels
+  - Si no coinciden, el API server rechaza el manifiesto
+  - Este mecanismo evita que un Deployment gestione Pods que no le pertenecen
+
+i18n:
+  en:
+    title: "Deployment without selector"
+    briefing: "This Deployment is missing spec.selector and the API server rejects it. It's a mandatory field in apps/v1 that indicates which Pods the Deployment manages."
+    hints:
+      - "The error says spec.selector: Required value. In apps/v1, a Deployment needs a selector field to know which Pods belong to it."
+      - "The selector uses matchLabels to find Pods. The selector labels must match the template labels exactly (app: nginx)."
+      - "Solution: add a selector block below replicas, at the same level:\n  selector:\n    matchLabels:\n      app: nginx"
+    successMessage: |
+      Perfect! The Deployment can now manage its Pods correctly.
+
+      What you learned:
+      - In apps/v1, spec.selector is mandatory in a Deployment
+      - selector.matchLabels indicates which Pods belong to the Deployment
+      - The selector labels must match spec.template.metadata.labels
+      - If they don't match, the API server rejects the manifest
+      - This mechanism prevents a Deployment from managing Pods that don't belong to it
+
+validations:
+  - type: syntax
+    errorMessage: "El YAML debe ser válido."
+    check:
+      custom: |
+        try {
+          yaml.load(code);
+          return { passed: true };
+        } catch (e) {
+          return {
+            passed: false,
+            errorMessage: "Error: YAML parse error\n\n" + (e instanceof Error ? e.message : "YAML inválido")
+          };
+        }
+    failMessage: "Error: YAML parse error."
+
+  - type: semantic
+    errorMessage: "Falta el campo spec.selector en el Deployment."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const selector = _get(parsed, 'spec.selector');
+          if (!selector) {
+            return {
+              passed: false,
+              errorMessage: "Error: spec.selector: Required value\n\nUn Deployment en apps/v1 necesita un campo spec.selector para saber qué Pods gestionar. Sin él, Kubernetes no puede asociar los Pods creados por el template con este Deployment."
+            };
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "Falta el campo spec.selector."
+
+  - type: intention
+    errorMessage: "El selector debe coincidir con las labels del template."
+    check:
+      custom: |
+        try {
+          const parsed = yaml.load(code);
+          if (!parsed) return { passed: true };
+          const selector = _get(parsed, 'spec.selector');
+          if (!selector) return { passed: true };
+          const matchLabels = selector.matchLabels;
+          if (!matchLabels) {
+            return {
+              passed: false,
+              errorMessage: "Error: spec.selector.matchLabels: Required value\n\nEl selector necesita un campo matchLabels para definir qué labels deben tener los Pods gestionados por este Deployment."
+            };
+          }
+          const templateLabels = _get(parsed, 'spec.template.metadata.labels');
+          if (!templateLabels) return { passed: true };
+          for (const key in matchLabels) {
+            if (templateLabels[key] !== matchLabels[key]) {
+              return {
+                passed: false,
+                errorMessage: "Error: spec.selector no coincide con spec.template.metadata.labels\n\n`selector.matchLabels." + key + ": " + String(matchLabels[key]) + "` no coincide con `template.metadata.labels." + key + ": " + String(templateLabels[key]) + "`.\nEl selector.matchLabels debe coincidir exactamente con las labels del template para que el Deployment pueda gestionar los Pods que crea."
+              };
+            }
+          }
+          return { passed: true };
+        } catch { return { passed: true }; }
+    failMessage: "El selector debe coincidir con las labels del template."
+
+terminalCommands:
+  "kubectl apply -f deployment.yaml":
+    - when:
+        custom: |
+          try { yaml.load(code); return false; } catch { return true; }
+      output: "error: error parsing deployment.yaml: error converting YAML to JSON: yaml: invalid YAML"
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            return p && !_get(p, 'spec.selector');
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "deployment.yaml": Deployment.apps "nginx-deploy" is invalid:
+        spec.selector: Required value
+      exitCode: 1
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const selector = _get(p, 'spec.selector');
+            if (!selector || !selector.matchLabels) return true;
+            const templateLabels = _get(p, 'spec.template.metadata.labels');
+            if (!templateLabels) return false;
+            for (const key in selector.matchLabels) {
+              if (templateLabels[key] !== selector.matchLabels[key]) return true;
+            }
+            return false;
+          } catch { return false; }
+      output: |
+        Error from server (Invalid): error when creating "deployment.yaml": Deployment.apps "nginx-deploy" is invalid:
+        spec.template.metadata.labels: Invalid value: map[string]string{"app":"nginx"}: `selector` does not match template `labels`
+      exitCode: 1
+    - output: "deployment.apps/nginx-deploy created"
+      exitCode: 0
+
+  "kubectl get deployments":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const selector = _get(p, 'spec.selector');
+            if (!selector || !selector.matchLabels) return true;
+            const templateLabels = _get(p, 'spec.template.metadata.labels');
+            if (!templateLabels) return true;
+            for (const key in selector.matchLabels) {
+              if (templateLabels[key] !== selector.matchLabels[key]) return true;
+            }
+            return false;
+          } catch { return true; }
+      output: "No resources found in default namespace."
+      exitCode: 0
+    - output: |
+        NAME           READY   UP-TO-DATE   AVAILABLE   AGE
+        nginx-deploy   3/3     3            3           10s
+      exitCode: 0
+
+  "kubectl get pods":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const selector = _get(p, 'spec.selector');
+            if (!selector || !selector.matchLabels) return true;
+            const templateLabels = _get(p, 'spec.template.metadata.labels');
+            if (!templateLabels) return true;
+            for (const key in selector.matchLabels) {
+              if (templateLabels[key] !== selector.matchLabels[key]) return true;
+            }
+            return false;
+          } catch { return true; }
+      output: "No resources found in default namespace."
+      exitCode: 0
+    - output: |
+        NAME                            READY   STATUS    RESTARTS   AGE
+        nginx-deploy-7d4f8b7c9a-k2x8   1/1     Running   0          10s
+        nginx-deploy-7d4f8b7c9a-m9p3   1/1     Running   0          10s
+        nginx-deploy-7d4f8b7c9a-q5w1   1/1     Running   0          10s
+      exitCode: 0
+
+  "kubectl describe deployment nginx-deploy":
+    - when:
+        custom: |
+          try {
+            const p = yaml.load(code);
+            const selector = _get(p, 'spec.selector');
+            if (!selector || !selector.matchLabels) return true;
+            const templateLabels = _get(p, 'spec.template.metadata.labels');
+            if (!templateLabels) return true;
+            for (const key in selector.matchLabels) {
+              if (templateLabels[key] !== selector.matchLabels[key]) return true;
+            }
+            return false;
+          } catch { return true; }
+      output: "Error from server (NotFound): deployments.apps \"nginx-deploy\" not found"
+      exitCode: 1
+    - output: |
+        Name:                   nginx-deploy
+        Namespace:              default
+        Selector:               app=nginx
+        Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
+        StrategyType:           RollingUpdate
+        MinReadySeconds:        0
+        RollingUpdateStrategy:  25% max unavailable, 25% max surge
+        Pod Template:
+          Labels:  app=nginx
+          Containers:
+           nginx:
+            Image:        nginx:1.25
+            Port:         80/TCP
+            Host Port:    0/TCP
+        Conditions:
+          Type           Status  Reason
+          ----           ------  ------
+          Available      True    MinimumReplicasAvailable
+          Progressing    True    NewReplicaSetAvailable
+        OldReplicaSets:  <none>
+        NewReplicaSet:   nginx-deploy-7d4f8b7c9a (3/3 replicas created)
+        Events:
+          Type    Reason             Age   From                   Message
+          ----    ------             ----  ----                   -------
+          Normal  ScalingReplicaSet  15s   deployment-controller  Scaled up replica set nginx-deploy-7d4f8b7c9a to 3
+      exitCode: 0

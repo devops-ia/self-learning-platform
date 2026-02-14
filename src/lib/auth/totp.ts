@@ -1,6 +1,5 @@
 import { generateSecret as otpGenerateSecret, generateURI, verifySync } from "otplib";
-
-const ISSUER = process.env.TOTP_ISSUER || "DevOps Learning Platform";
+import { getTotpIssuer } from "@/lib/settings";
 
 export function generateTOTPSecret(): string {
   return otpGenerateSecret();
@@ -9,7 +8,7 @@ export function generateTOTPSecret(): string {
 export function getTOTPAuthUri(secret: string, account: string): string {
   return generateURI({
     strategy: "totp",
-    issuer: ISSUER,
+    issuer: getTotpIssuer(),
     label: account,
     secret,
   });

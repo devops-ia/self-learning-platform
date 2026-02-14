@@ -1,0 +1,189 @@
+# =============================================================================
+# Exercise 3: Silent Exception Handling (Medium)
+# =============================================================================
+# Interview scenario: The candidate must identify that a bare except: pass
+# is silently swallowing errors, hiding data quality issues. They must add
+# proper exception handling with type conversion and None checks.
+# =============================================================================
+
+id: "py-03-exception-handling"
+title: "Excepciones silenciadas con except pass"
+briefing: "Esta funcion procesa una lista de pedidos calculando el total de cada uno (price * quantity). El problema es que usa 'except: pass', que silencia TODOS los errores. Hay datos incorrectos (un precio como string y una cantidad None) que se ignoran sin avisar. Reemplaza el except generico por un manejo adecuado: convierte el precio string a float y trata la cantidad None con un valor por defecto."
+prerequisites: []
+language: "python"
+difficulty: "medium"
+initialCode: |
+  def process_data(data):
+      results = []
+      for item in data:
+          try:
+              value = item["price"] * item["quantity"]
+              results.append(value)
+          except:
+              pass
+      return results
+
+  orders = [
+      {"price": 10.99, "quantity": 2},
+      {"price": "15.50", "quantity": 3},
+      {"price": 7.25, "quantity": 1},
+      {"price": 20.00, "quantity": None},
+  ]
+
+  totals = process_data(orders)
+  print(f"Order totals: {totals}")
+  print(f"Grand total: {sum(totals)}")
+hints:
+  - "Ejecuta el codigo mentalmente: el segundo pedido tiene price como string '15.50', que no se puede multiplicar por un int. El cuarto tiene quantity None. Ambos errores se tragan silenciosamente."
+  - "En lugar de 'except: pass', convierte el precio a float con float(item['price']) y maneja None con un valor por defecto: 'quantity = item[\"quantity\"] or 0' o un if explicito."
+  - "Reemplaza el try/except por algo como: price = float(item['price']), quantity = item['quantity'] if item['quantity'] is not None else 0, y calcula value = price * quantity. Puedes usar except (TypeError, ValueError) para manejar casos inesperados con un mensaje de aviso."
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - 'except: pass' es un antipatron que oculta errores reales y dificulta la depuracion
+  - Siempre captura excepciones especificas (TypeError, ValueError, KeyError, etc.)
+  - Los datos del mundo real a menudo tienen tipos inconsistentes que necesitan conversion
+  - Es mejor fallar de forma explicita o registrar un warning que silenciar errores
+  - En entrevistas, detectar el except generico es una senal de madurez como desarrollador
+
+i18n:
+  en:
+    title: "Silenced Exceptions with except pass"
+    briefing: "This function processes a list of orders calculating the total for each one (price * quantity). The problem is it uses 'except: pass', which silences ALL errors. There is incorrect data (a price as string and a quantity of None) that gets silently ignored. Replace the generic except with proper handling: convert the string price to float and handle the None quantity with a default value."
+    hints:
+      - "Run the code mentally: the second order has price as string '15.50', which can't be multiplied by an int. The fourth has quantity None. Both errors are swallowed silently."
+      - "Instead of 'except: pass', convert the price to float with float(item['price']) and handle None with a default value: 'quantity = item[\"quantity\"] or 0' or an explicit if."
+      - "Replace the try/except with something like: price = float(item['price']), quantity = item['quantity'] if item['quantity'] is not None else 0, and calculate value = price * quantity. You can use except (TypeError, ValueError) for unexpected cases with a warning message."
+    successMessage: |
+      Correct!
+
+      What you learned:
+      - 'except: pass' is an anti-pattern that hides real errors and makes debugging harder
+      - Always catch specific exceptions (TypeError, ValueError, KeyError, etc.)
+      - Real-world data often has inconsistent types that need conversion
+      - It's better to fail explicitly or log a warning than to silence errors
+      - In interviews, spotting the bare except is a sign of developer maturity
+
+validations:
+  - type: syntax
+    errorMessage: "No debe haber un 'except:' generico seguido de 'pass'."
+    check:
+      not:
+        match: "except\\s*:\\s*\\n\\s*pass"
+    failMessage: |
+      Anti-pattern detectado: except: pass
+
+      El bloque 'except: pass' captura TODAS las excepciones (incluyendo
+      SystemExit, KeyboardInterrupt) y las silencia. Esto oculta errores
+      reales en los datos.
+
+      Reemplazalo por un manejo especifico de los tipos de error que esperas.
+
+  - type: syntax
+    errorMessage: "No debe haber un 'except Exception:' con solo 'pass'."
+    check:
+      not:
+        match: "except\\s+Exception\\s*:\\s*\\n\\s*pass"
+    failMessage: |
+      Aunque 'except Exception:' es mejor que 'except:', seguido de 'pass'
+      sigue silenciando todos los errores. Necesitas manejar los errores
+      de forma activa, no ignorarlos.
+
+  - type: semantic
+    errorMessage: "Debes convertir el precio string a float."
+    check:
+      match: "float\\("
+    failMessage: |
+      El segundo pedido tiene price = "15.50" (un string). No puedes
+      multiplicar un string por un int directamente:
+
+          >>> "15.50" * 3
+          '15.5015.5015.50'  # Repite el string, no multiplica!
+
+      Usa float() para convertir el precio: float(item["price"])
+
+  - type: semantic
+    errorMessage: "Debes manejar el caso en que quantity sea None."
+    check:
+      any:
+        - match: "is None"
+        - match: "is not None"
+        - match: "or\\s+0"
+        - match: "or\\s+1"
+        - match: "if.*quantity"
+    failMessage: |
+      El cuarto pedido tiene quantity = None. Multiplicar un float por None
+      produce TypeError:
+
+          >>> 20.00 * None
+          TypeError: unsupported operand type(s) for *: 'float' and 'NoneType'
+
+      Necesitas comprobar si quantity es None y usar un valor por defecto (0 o 1):
+          quantity = item["quantity"] if item["quantity"] is not None else 0
+
+  - type: intention
+    errorMessage: "La funcion debe procesar los 4 pedidos, no solo los validos."
+    check:
+      custom: |
+        const hasFloatConversion = /float\(/.test(code);
+        const hasNoneHandling = /is None|is not None|or\s+0|or\s+1/.test(code);
+        const noBareExcept = !/except\s*:\s*\n\s*pass/.test(code);
+        if (!hasFloatConversion || !hasNoneHandling || !noBareExcept) {
+          return { passed: false, errorMessage: "Necesitas convertir el string a float, manejar None, y eliminar el except: pass." };
+        }
+        return { passed: true };
+    failMessage: |
+      Tu solucion debe procesar los 4 pedidos correctamente:
+      - Pedido 1: 10.99 * 2 = 21.98
+      - Pedido 2: float("15.50") * 3 = 46.50
+      - Pedido 3: 7.25 * 1 = 7.25
+      - Pedido 4: 20.00 * 0 = 0.00 (quantity None -> 0)
+
+terminalCommands:
+  "python main.py":
+    - when:
+        match: "except\\s*:\\s*\\n\\s*pass"
+      output: |
+        Order totals: [21.98, 7.25]
+        Grand total: 29.23
+
+        WARNING: Only 2 of 4 orders were processed!
+        The bare 'except: pass' silently ignored errors in orders #2 and #4.
+        Expected 4 totals but got 2. Data is being lost silently.
+      exitCode: 1
+
+    - when:
+        not:
+          match: "float\\("
+      output: |
+        Traceback (most recent call last):
+          File "main.py", line 5, in process_data
+            value = item["price"] * item["quantity"]
+                    ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+        TypeError: can't multiply sequence by non-int of type 'NoneType'
+
+        Order #2 has price="15.50" (str). String * int repeats the string
+        instead of doing arithmetic. Use float() to convert.
+      exitCode: 1
+
+    - when:
+        not:
+          any:
+            - match: "is None"
+            - match: "is not None"
+            - match: "or\\s+0"
+      output: |
+        Traceback (most recent call last):
+          File "main.py", line 5, in process_data
+            value = price * item["quantity"]
+                    ~~~~~~^~~~~~~~~~~~~~~~~~
+        TypeError: unsupported operand type(s) for *: 'float' and 'NoneType'
+
+        Order #4 has quantity=None. Handle None values before arithmetic.
+      exitCode: 1
+
+    - output: |
+        Order totals: [21.98, 46.5, 7.25, 0.0]
+        Grand total: 75.73
+      exitCode: 0

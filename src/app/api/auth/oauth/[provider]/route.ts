@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes, createHmac } from "crypto";
 import { cookies } from "next/headers";
-
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+import { getBaseUrl, getOAuthGoogleClientId, getOAuthGithubClientId, getOAuthAzureClientId, getOAuthAzureTenant } from "@/lib/settings";
 
 function getProviderAuthURL(
   provider: string,
@@ -10,9 +9,9 @@ function getProviderAuthURL(
 ): string | null {
   switch (provider) {
     case "google": {
-      const clientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
+      const clientId = getOAuthGoogleClientId();
       if (!clientId) return null;
-      const callback = `${BASE_URL}${process.env.OAUTH_GOOGLE_CALLBACK || "/api/auth/oauth/google/callback"}`;
+      const callback = `${getBaseUrl()}${process.env.OAUTH_GOOGLE_CALLBACK || "/api/auth/oauth/google/callback"}`;
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: callback,
@@ -25,9 +24,9 @@ function getProviderAuthURL(
       return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     }
     case "github": {
-      const clientId = process.env.OAUTH_GITHUB_CLIENT_ID;
+      const clientId = getOAuthGithubClientId();
       if (!clientId) return null;
-      const callback = `${BASE_URL}${process.env.OAUTH_GITHUB_CALLBACK || "/api/auth/oauth/github/callback"}`;
+      const callback = `${getBaseUrl()}${process.env.OAUTH_GITHUB_CALLBACK || "/api/auth/oauth/github/callback"}`;
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: callback,
@@ -37,10 +36,10 @@ function getProviderAuthURL(
       return `https://github.com/login/oauth/authorize?${params}`;
     }
     case "azure": {
-      const clientId = process.env.OAUTH_AZURE_CLIENT_ID;
-      const tenant = process.env.OAUTH_AZURE_TENANT || "common";
+      const clientId = getOAuthAzureClientId();
+      const tenant = getOAuthAzureTenant();
       if (!clientId) return null;
-      const callback = `${BASE_URL}${process.env.OAUTH_AZURE_CALLBACK || "/api/auth/oauth/azure/callback"}`;
+      const callback = `${getBaseUrl()}${process.env.OAUTH_AZURE_CALLBACK || "/api/auth/oauth/azure/callback"}`;
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: callback,

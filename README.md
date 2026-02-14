@@ -1,270 +1,195 @@
-# DevOps Learning Platform
+# 🚀 Self Learning Platform
 
-Interactive learning platform for DevOps technologies. Learn by fixing broken code, not by reading docs.
+Build real technical capability through structured, hands-on problem solving — without infrastructure setup, external systems, or operational overhead. Designed for teams that measure performance by execution, not theory.
 
-## Overview
+## The Problem
 
-### Platform Screenshots
+Most technical training fails where it matters:
+
+- 📖 Passive content, low retention
+- 🧪 No realistic failure scenarios
+- 📊 No measurable skill validation
+- 🏗 Training environments that require maintenance
+- 🎭 Theoretical knowledge mistaken for real competence
+
+Learning becomes disconnected from execution.
+
+## ⚙️ The Solution
+
+A fully self-contained, self-paced learning environment focused on deliberate practice.
+
+- No external infrastructure.
+- No provisioning.
+- No billing risks.
+- No operational complexity.
+
+Learners debug broken configurations, resolve failure states, and restore working systems in a controlled environment.
+
+They progress by solving — not by watching.
+
+## 🎯 Why It Works
+
+### 🔍 Active Debugging
+
+- Learners fix errors, repair invalid definitions, and resolve system inconsistencies.
+- Every exercise simulates real-world failure patterns.
+- Progress depends on reasoning.
+
+### ⚡ Instant Validation
+
+Deterministic feedback confirms correctness immediately.
+
+- No guesswork.
+- No ambiguity.
+- No waiting.
+
+### 🛡 Zero Operational Overhead
+
+- Everything runs in isolation.
+- Nothing connects to external systems.
+- Deploy once. Train indefinitely.
+
+### 📈 Measurable Capability
+
+- Structured learning paths
+- Progress tracking
+- Standardized exercises
+- Audit visibility
+
+Skill becomes observable and comparable.
+
+## 🏢 Use Cases
+
+### 👥 Team Onboarding
+
+- Standardize technical fundamentals before production access.
+- Ensure consistency across every new hire.
+
+### 🧪 Skills Assessment
+
+- Evaluate execution, not memorization.
+- Observe real debugging behavior under constraints.
+
+### 📚 Internal Upskilling
+
+- Enable structured progression into advanced technical roles.
+- Reduce reliance on constant supervision.
+
+### 🎥 Technical Interviews
+
+- Assign real-world scenarios.
+- Observe reasoning in real time.
+- Assess capability directly.
+
+## 🖥 Screenshots
 
 <table>
 <tr>
-<td><strong>Home</strong></td>
-<td><strong>Progress tracking</strong></td>
+<td><strong>🏠 Dashboard</strong></td>
+<td><strong>📊 Progress Tracking</strong></td>
 </tr>
 <tr>
 <td><img src="assets/home.png" alt="Home" width="350"/></td>
-<td><img src="assets/path-example.png" alt="Learning Path" width="350"/></td>
+<td><img src="assets/learning-path.png" alt="Learning Path" width="350"/></td>
 </tr>
 <tr>
-<td><strong>Kubernetes exercise</strong></td>
-<td><strong>Terraform exercise</strong></td>
+<td><strong>🛠 Admin panel</strong></td>
+<td><strong>✅ Exercise Terminal</strong></td>
 </tr>
 <tr>
-<td><img src="assets/kubernetes-example.png" alt="Kubernetes Exercise" width="350"/></td>
-<td><img src="assets/terraform-example.png" alt="Terraform Exercise" width="350"/></td>
+<td><img src="assets/admin-panel.png" alt="Admin Panel Example" width="350"/></td>
+<td><img src="assets/sample-exercise-wip.png" alt="Exercise WIP Example" width="350"/></td>
 </tr>
 </table>
 
-## Features
+## 🌟 Key Capabilities
 
-- **Interactive exercises** with a code editor (Monaco), simulated terminal (xterm.js), and instant feedback
-- **Multiple modules**: Terraform, Kubernetes, Ansible (extensible via admin panel or YAML)
-- **Database-backed exercises**: stored in SQLite, managed via admin panel or YAML import
-- **Authentication**: local accounts, OAuth (Google/GitHub/Azure), TOTP 2FA, WebAuthn passkeys
-- **Admin panel**: manage users, exercises, modules, and audit logs
-- **Dark/light theme** with automatic OS preference detection
-- **i18n**: Spanish (default) and English, extensible to other languages
-- **Realistic simulation**: terminal commands produce output identical to real CLI tools
-- **Semantic versioning**: automated releases via semantic-release
+- 🖊 Interactive coding environment with embedded editor
+- 💻 Simulated terminal for realistic execution flows
+- 🧪 Deterministic validation engine with instant feedback
+- 🗂 Extensible exercise system with structured content management
+- 🔐 Role-based authentication and access control
+- 📜 Audit logging and progress tracking
+- 🌗 Dark and light interface modes
 
-## Tech Stack
-
-- Next.js 15 (App Router) + TypeScript
-- Tailwind CSS 4
-- SQLite via Drizzle ORM + better-sqlite3
-- iron-session + argon2 (auth)
-- Monaco Editor (`@monaco-editor/react`)
-- xterm.js (`@xterm/xterm`)
-
-## Prerequisites
-
-- Node.js 18+
-- npm
-
-## Local Development
+## 🚀 Quick Start
 
 ```bash
 # Install dependencies
 npm install
 
-# Create the SQLite database and default admin user
+# Initialize database and default admin
 npm run db:seed
 
-# Import exercises from YAML into the database
+# Import exercises
 npm run exercises:import
 
-# Start the development server
+# Start development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open:
 
-Default admin credentials: `admin@devopslab.local` / `admin1234` (configurable via `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars).
-
-## Available Scripts
-
-| Command | Description |
-|---|---|
-| `npm run dev` | Start development server (port 3000) |
-| `npm run build` | Production build |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
-| `npm run db:seed` | Create/reset database tables + default admin user |
-| `npm run exercises:import` | Import YAML exercises into database |
-
-## Production Deployment
-
-### Option 1: Node.js Server
-
-```bash
-# Install dependencies
-npm ci
-
-# Create the database and import exercises
-mkdir -p data
-npm run db:seed
-npm run exercises:import
-
-# Build the application
-npm run build
-
-# Start the production server
-npm run start
+```
+http://localhost:3000
 ```
 
-The app runs on port 3000 by default. Set `PORT` environment variable to change it.
+Default admin credentials:
 
-## Docker
+```
+admin@devopslab.local
+admin1234
+```
 
-Production-ready Docker setup with multi-stage build, health checks, and persistent SQLite database.
+Override using `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables.
 
-### Quick Start
+## 🐳 Container Deployment
 
-```bash
-# Build and run in background
+Production-ready container with persistent storage support.
+
+```
+# Build and run
 docker-compose up -d --build
 
 # View logs
 docker-compose logs -f
 
-# Stop the application
+# Stop
 docker-compose down
-
-# Stop and remove volumes (WARNING: deletes all data)
-docker-compose down -v
 ```
 
-App URL: `http://localhost:3000` (or `http://<your-host>:3000` if on a remote server).
+Default URL:
 
-### Docker CLI
-
-```bash
-# Build the image
-docker build -t learning-platform:latest .
-
-# Run the container with persistent database
-docker run -d \
-  -p 3000:3000 \
-  -v learning-platform-data:/app/data \
-  --name learning-platform \
-  learning-platform:latest
-
-# View logs
-docker logs -f learning-platform
-
-# Stop and remove
-docker stop learning-platform
-docker rm learning-platform
+```
+http://localhost:3000
 ```
 
-### Configuration: Host and Port
+Configure via `HOST` and `PORT` environment variables.
 
-Control the listening address and port via environment variables in `docker-compose.yml`:
+## 💾 Database Backup
 
-```bash
-# Use default (0.0.0.0:3000 - all interfaces)
-docker-compose up -d --build
-
-# Use specific port
-PORT=8080 docker-compose up -d --build
-
-# Use specific host and port
-HOST=192.168.1.100 PORT=8080 docker-compose up -d --build
 ```
-
-The container listens on all interfaces (`0.0.0.0`) by default. Environment variables:
-
-- `HOST` — host interface (default `0.0.0.0`)
-- `PORT` — port number (default `3000`)
-- `NODE_ENV=production` — hard-coded in production builds
-
-### Architecture
-
-**Multi-stage Docker build** (3 stages):
-
-1. **builder**: Installs build deps, compiles Next.js app, compiles `better-sqlite3` (~500MB, discarded)
-2. **db-init**: Preserves database schema and dependencies (~200MB, discarded)
-3. **runner**: Minimal Alpine base with production artifacts only (~350MB, final image)
-
-**Key features:**
-
-- Non-root user (`nextjs:1001`) for security
-- `dumb-init` for proper signal handling (SIGTERM/SIGINT)
-- `scripts/seed.js` initializes SQLite schema on container startup
-- SQLite WAL mode for better concurrency
-- Health check runs every 30 seconds
-
-### Database Management
-
-**Location in container:** `/app/data/learning-platform.db`
-
-**Backup / restore:**
-
-```bash
-# Backup the database
+# Backup
 docker cp learning-platform:/app/data/learning-platform.db ./backup.db
 
-# Restore the database
+# Restore
 docker cp ./backup.db learning-platform:/app/data/learning-platform.db
 docker restart learning-platform
 ```
 
-**Reset database (destructive):**
-
-```bash
-docker-compose down -v
-docker-compose up -d --build
-```
-
-### Troubleshooting
-
-**Container won't start:**
-
-```bash
-# Check logs
-docker-compose logs --tail=100 learning-platform
-
-# If database is locked or corrupted, remove the volume
-docker-compose down
-docker volume rm learning-platform_learning-platform-data
-docker-compose up -d --build
-```
-
-**Inspect database:**
-
-```bash
-docker cp $(docker-compose ps -q learning-platform):/app/data/learning-platform.db ./backup.db
-sqlite3 backup.db ".schema"
-```
-
-**Permission errors:**
-
-```bash
-docker exec -it learning-platform sh
-chown -R nextjs:nodejs /app/data
-```
-
-## Documentation
+## 📄 Documentation
 
 | Document | Description |
 |----------|-------------|
-| [docs/exercises.md](docs/exercises.md) | How to add exercises (YAML, admin panel, API, direct DB) |
-| [docs/database.md](docs/database.md) | Database management, switching to PostgreSQL/MySQL/Turso |
-| [docs/configuration.md](docs/configuration.md) | All environment variables, config files, key source files |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Full contributing guide (YAML format, Check DSL, i18n, terminal commands) |
-
-## Project Structure
-
-```
-src/
-  app/              Next.js App Router (pages + API routes)
-    admin/           Admin panel (users, exercises, modules, audit)
-    api/             REST API endpoints
-    modules/         Dynamic [module]/[exerciseId] routes
-  components/       React components (editor, terminal, lab, auth, admin)
-  lib/
-    auth/            Authentication (session, password, OAuth, TOTP, passkeys)
-    db/              Drizzle ORM schema + connection + seed
-    exercises/       Exercise loader (db-loader.ts = runtime Check interpreter)
-    i18n/            Internationalization (locales, context provider)
-    theme/           Dark/light theme provider
-    validators/      Unified validation engine
-    terminal/        Terminal command simulator
-exercises/          YAML exercise source files + module config
-scripts/            Build scripts (import-exercises.ts)
-docs/               Documentation
-data/               SQLite database file (gitignored)
-```
+| [docs/api.md](docs/api.md) | API endpoints and usage examples |
+| [docs/architecture.md](docs/architecture.md) | System architecture and design decisions |
+| [docs/configuration.md](docs/configuration.md) | Environment variables and configuration |
+| [docs/database.md](docs/database.md) | Database configuration and migration |
+| [docs/exercises.md](docs/exercises.md) | Creating and importing exercises |
+| [docs/interview-guide.md](docs/interview-guide.md) | Conducting technical interviews with the platform |
+| [docs/development.md](docs/development.md) | Development setup and contribution guidelines |
+| [docs/production.md](docs/production.md) | Deploying to production environments |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 
 ## License
 

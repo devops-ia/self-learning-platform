@@ -1,0 +1,127 @@
+# =============================================================================
+# Exercise 1: Indentation Error (Easy)
+# =============================================================================
+# Interview scenario: The candidate must identify that the return statement
+# and the result calculation are outside the function body due to wrong
+# indentation. A classic Python pitfall for developers coming from other
+# languages.
+# =============================================================================
+
+id: "py-01-indentation-error"
+title: "Error de indentacion en funcion"
+briefing: "Esta funcion calcula el promedio de una lista de numeros, pero las dos ultimas lineas del cuerpo de la funcion no estan indentadas correctamente. Python usa la indentacion para delimitar bloques, asi que esas lineas quedan fuera de la funcion. Corrige la indentacion para que toda la logica quede dentro de calculate_average."
+prerequisites: []
+language: "python"
+difficulty: "easy"
+initialCode: |
+  def calculate_average(numbers):
+      if not numbers:
+          return 0
+      total = sum(numbers)
+      count = len(numbers)
+  result = total / count
+  return result
+
+  scores = [85, 92, 78, 95, 88]
+  avg = calculate_average(scores)
+  print(f"Average: {avg}")
+hints:
+  - "Fijate en las lineas 'result = total / count' y 'return result'. Estan al nivel del modulo, no dentro de la funcion."
+  - "En Python, todo el codigo que pertenece a una funcion debe estar indentado un nivel (4 espacios) respecto a la linea 'def'. Esas dos lineas necesitan indentacion."
+  - "Anade 4 espacios delante de 'result = total / count' y de 'return result' para que queden al mismo nivel que 'total = sum(numbers)'."
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - Python usa la indentacion (no llaves) para definir el cuerpo de funciones, bucles y condicionales
+  - Un return fuera del cuerpo de la funcion genera un SyntaxError o, peor aun, un NameError si la variable no existe en el ambito global
+  - Este tipo de error es muy comun al copiar y pegar codigo o al migrar desde lenguajes con llaves
+  - En entrevistas, verificar la indentacion es uno de los primeros pasos al depurar Python
+
+i18n:
+  en:
+    title: "Function Indentation Error"
+    briefing: "This function calculates the average of a list of numbers, but the last two lines of the function body are not properly indented. Python uses indentation to define blocks, so those lines fall outside the function. Fix the indentation so all the logic stays inside calculate_average."
+    hints:
+      - "Look at the lines 'result = total / count' and 'return result'. They are at module level, not inside the function."
+      - "In Python, all code belonging to a function must be indented one level (4 spaces) from the 'def' line. Those two lines need indentation."
+      - "Add 4 spaces before 'result = total / count' and 'return result' so they are at the same level as 'total = sum(numbers)'."
+    successMessage: |
+      Correct!
+
+      What you learned:
+      - Python uses indentation (not braces) to define function, loop, and conditional bodies
+      - A return outside the function body causes a SyntaxError or, worse, a NameError if the variable doesn't exist in the global scope
+      - This kind of error is very common when copying and pasting code or migrating from brace-based languages
+      - In interviews, checking indentation is one of the first steps when debugging Python
+
+validations:
+  - type: syntax
+    errorMessage: "La linea 'result = total / count' debe estar indentada dentro de la funcion."
+    check:
+      match: "def calculate_average\\(numbers\\):[\\s\\S]*?\\n    result = total / count"
+    failMessage: |
+      File "main.py", line 6
+        result = total / count
+        ^
+      IndentationError: unexpected indent
+
+      La linea 'result = total / count' esta fuera de la funcion. Debe tener 4 espacios
+      de indentacion para estar dentro del cuerpo de calculate_average.
+
+  - type: syntax
+    errorMessage: "La linea 'return result' debe estar indentada dentro de la funcion."
+    check:
+      match: "def calculate_average\\(numbers\\):[\\s\\S]*?\\n    return result"
+    failMessage: |
+      File "main.py", line 7
+        return result
+        ^
+      SyntaxError: 'return' outside function
+
+      La sentencia return debe estar dentro de la funcion. Anade 4 espacios de
+      indentacion para que quede dentro del cuerpo de calculate_average.
+
+  - type: semantic
+    errorMessage: "Las lineas result y return deben estar al mismo nivel que total y count."
+    check:
+      custom: |
+        const lines = code.split('\n');
+        const defIndex = lines.findIndex(l => l.startsWith('def calculate_average'));
+        if (defIndex === -1) {
+          return { passed: false, errorMessage: "No se encontro la funcion calculate_average." };
+        }
+        const resultLine = lines.find(l => l.trimStart().startsWith('result = total / count'));
+        const returnLine = lines.find(l => l.trimStart().startsWith('return result'));
+        if (!resultLine || !returnLine) {
+          return { passed: false, errorMessage: "No se encontraron las lineas 'result = ...' y 'return result'." };
+        }
+        const resultIndent = resultLine.match(/^(\s*)/)[1].length;
+        const returnIndent = returnLine.match(/^(\s*)/)[1].length;
+        if (resultIndent < 4 || returnIndent < 4) {
+          return { passed: false, errorMessage: "Las lineas result y return necesitan al menos 4 espacios de indentacion." };
+        }
+        return { passed: true };
+    failMessage: |
+      Las lineas 'result = total / count' y 'return result' deben tener la misma
+      indentacion que las otras lineas dentro de la funcion (4 espacios).
+
+terminalCommands:
+  "python main.py":
+    - when:
+        not:
+          match: "def calculate_average\\(numbers\\):[\\s\\S]*?\\n    result = total / count\\n    return result"
+      output: |
+        Traceback (most recent call last):
+          File "main.py", line 6, in <module>
+            result = total / count
+                     ^^^^^
+        NameError: name 'total' is not defined
+
+        The variable 'total' is defined inside the function calculate_average,
+        but line 6 is at module level where 'total' does not exist.
+      exitCode: 1
+
+    - output: |
+        Average: 87.6
+      exitCode: 0

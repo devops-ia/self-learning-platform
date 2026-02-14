@@ -1,4 +1,114 @@
-# Contributing: Adding New Exercises
+# Contributing
+
+## Development Setup
+
+### Prerequisites
+
+- Node.js 22 or higher
+- npm (included with Node.js)
+- Git
+
+### Getting Started
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/devops-ia/self-learning-platform.git
+   cd self-learning-platform
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create and seed the database:
+   ```bash
+   npm run db:seed
+   ```
+
+4. Import exercise definitions:
+   ```bash
+   npm run exercises:import
+   ```
+
+5. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+The application will be available at http://localhost:3000
+
+## Available Commands
+
+### npm Scripts
+
+- `npm run dev` - Start development server on localhost:3000
+- `npm run build` - Production build
+- `npm run lint` - Run ESLint
+- `npm run db:seed` - Create or reset SQLite database tables
+- `npm run exercises:import` - Import YAML exercises into database
+
+### Makefile Targets
+
+For convenience, the project includes a Makefile with common tasks:
+
+- `make install` - Install npm dependencies
+- `make dev` - Start development server
+- `make build` - Full production build (seed + import + build)
+- `make lint` - Run ESLint
+- `make seed` - Create or reset database tables
+- `make import` - Import YAML exercises into database
+- `make test` - Run tests
+
+See `make help` for the complete list of available commands.
+
+## Coding Standards
+
+- **TypeScript**: All code must use TypeScript in strict mode
+- **Styling**: Use Tailwind CSS 4 for all styles. Do not use custom CSS unless absolutely necessary
+- **Database**: Use Drizzle ORM for all database operations
+- **Validation**: Use Zod schemas for input validation
+- **Internationalization**: Use the `useT()` hook for all UI strings. Add translations to `src/lib/i18n/locales/`
+- **Code formatting**: No emojis in code, comments, or commit messages
+- **File organization**: Follow the existing directory structure. Prefer editing existing files over creating new ones
+
+## Pull Request Workflow
+
+1. Create a new branch from `main`:
+   ```bash
+   git checkout -b feat/your-feature-name
+   ```
+
+2. Make your changes following the coding standards
+
+3. Verify your changes:
+   ```bash
+   npm run lint
+   npm run build
+   ```
+
+4. Commit your changes using conventional commits:
+   - `feat:` for new features
+   - `fix:` for bug fixes
+   - `docs:` for documentation changes
+   - `refactor:` for code refactoring
+   - `test:` for test additions or changes
+   - `chore:` for maintenance tasks
+
+   Example:
+   ```bash
+   git add .
+   git commit -m "feat: add Ansible module support"
+   ```
+
+5. Push your branch and open a pull request:
+   ```bash
+   git push origin feat/your-feature-name
+   ```
+
+6. CI will run automatically to verify linting and build. Address any issues before requesting review.
+
+## Adding New Exercises
 
 Exercises are stored in the database and loaded at runtime. There are two ways to add them: **YAML import** (recommended) or **admin panel**.
 

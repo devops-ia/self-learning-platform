@@ -55,6 +55,8 @@ export interface ModuleData {
   icon: string;
   prefix: string;
   language: string;
+  showDifficulty: boolean;
+  image?: string;
   sortOrder: number;
 }
 
@@ -62,6 +64,7 @@ export interface ExerciseListItem {
   id: string;
   title: string;
   prerequisites: string[];
+  difficulty?: string;
   i18n?: Record<string, { title?: string; briefing?: string }>;
 }
 
@@ -103,7 +106,7 @@ function _get(obj: unknown, path: string): unknown {
  * Evaluates a Check DSL object against code, returns boolean.
  * Interprets a Check DSL object against code at runtime.
  */
-function evaluateCheck(check: Check, code: string): boolean {
+export function evaluateCheck(check: Check, code: string): boolean {
   // Each field is an AND condition — all must pass
   if (check.contains !== undefined) {
     if (!code.includes(check.contains)) return false;
@@ -278,6 +281,7 @@ function hydrateExercise(row: {
   validations: string;
   terminalCommands: string;
   i18n: string | null;
+  difficulty: string | null;
 }): Exercise {
   const storedValidations: StoredValidation[] = JSON.parse(row.validations);
   const storedCommands: Record<string, StoredTerminalResponse[]> = JSON.parse(row.terminalCommands);
@@ -299,6 +303,7 @@ function hydrateExercise(row: {
     successMessage: row.successMessage,
     validations: storedValidations.map(hydrateValidation),
     terminalCommands,
+    ...(row.difficulty ? { difficulty: row.difficulty as "easy" | "medium" | "hard" } : {}),
   };
 }
 
@@ -373,6 +378,8 @@ export function getModulesFromDB(): ModuleData[] {
     icon: r.icon,
     prefix: r.prefix,
     language: r.language,
+    showDifficulty: r.showDifficulty,
+    image: r.image || undefined,
     sortOrder: r.sortOrder,
   }));
 
@@ -390,6 +397,7 @@ export function getModuleExerciseList(moduleId: string): ExerciseListItem[] {
       id: exercisesTable.id,
       title: exercisesTable.title,
       prerequisites: exercisesTable.prerequisites,
+      difficulty: exercisesTable.difficulty,
       i18n: exercisesTable.i18n,
     })
     .from(exercisesTable)
@@ -401,6 +409,7 @@ export function getModuleExerciseList(moduleId: string): ExerciseListItem[] {
     id: r.id,
     title: r.title,
     prerequisites: JSON.parse(r.prerequisites),
+    ...(r.difficulty ? { difficulty: r.difficulty } : {}),
     ...(r.i18n ? { i18n: JSON.parse(r.i18n) } : {}),
   }));
 

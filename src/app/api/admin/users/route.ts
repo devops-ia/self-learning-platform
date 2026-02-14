@@ -4,8 +4,9 @@ import { randomUUID } from "crypto";
 import { requireAdmin } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { like, desc, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { hashPassword } from "@/lib/auth/password";
+import { encrypt, hmacHash, safeDecrypt } from "@/lib/crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,8 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
   const offset = (page - 1) * limit;
 
-  let query = db
+  // Fetch all users then filter/search in memory (emails are encrypted)
+  const allRows = db
     .select({
       id: users.id,
       email: users.email,
@@ -29,29 +31,33 @@ export async function GET(req: NextRequest) {
       createdAt: users.createdAt,
       totpEnabled: users.totpEnabled,
       emailVerified: users.emailVerified,
+      disabled: users.disabled,
     })
-    .from(users);
-
-  if (search) {
-    query = query.where(
-      like(users.email, `%${search}%`)
-    ) as typeof query;
-  }
-
-  const rows = query
+    .from(users)
     .orderBy(desc(users.createdAt))
-    .limit(limit)
-    .offset(offset)
     .all();
 
-  const total = db
-    .select({ count: sql<number>`count(*)` })
-    .from(users)
-    .get();
+  // Decrypt emails and displayNames for display
+  const decryptedRows = allRows.map((row) => ({
+    ...row,
+    email: safeDecrypt(row.email),
+    displayName: safeDecrypt(row.displayName),
+  }));
+
+  // Filter by search term on decrypted email
+  const filtered = search
+    ? decryptedRows.filter((r) =>
+        r.email?.toLowerCase().includes(search.toLowerCase()) ||
+        r.username?.toLowerCase().includes(search.toLowerCase())
+      )
+    : decryptedRows;
+
+  const total = filtered.length;
+  const paginated = filtered.slice(offset, offset + limit);
 
   return NextResponse.json({
-    users: rows,
-    total: total?.count || 0,
+    users: paginated,
+    total,
     page,
     limit,
   });
@@ -78,16 +84,26 @@ export async function POST(req: NextRequest) {
   }
 
   const { email, password, username, role } = parsed.data;
+
+  // Check uniqueness by hash
+  const emailH = hmacHash(email);
+  const existing = db.select({ id: users.id }).from(users).where(eq(users.emailHash, emailH)).get();
+  if (existing) {
+    return NextResponse.json({ error: "Email already registered" }, { status: 409 });
+  }
+
   const passwordHash = await hashPassword(password);
   const userId = randomUUID();
+  const displayNameValue = username || email.split("@")[0];
 
   db.insert(users)
     .values({
       id: userId,
-      email,
+      email: encrypt(email),
+      emailHash: emailH,
       passwordHash,
       username: username || email.split("@")[0],
-      displayName: username || email.split("@")[0],
+      displayName: encrypt(displayNameValue),
       role,
       createdAt: new Date().toISOString(),
     })

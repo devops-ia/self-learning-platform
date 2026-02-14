@@ -18,14 +18,14 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body className="min-h-screen antialiased">
-        <ThemeProvider>
+        <AuthProvider>
           <LanguageProvider>
-            <AuthProvider>
+            <ThemeProvider>
               <Navbar />
               <main>{children}</main>
-            </AuthProvider>
+            </ThemeProvider>
           </LanguageProvider>
-        </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

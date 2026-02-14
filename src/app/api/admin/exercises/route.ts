@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { exercises, modules } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { invalidateExerciseCache } from "@/lib/exercises";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,18 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const moduleFilter = searchParams.get("module");
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+  const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "50", 10)));
 
+  // Count total
+  let countQuery = db.select({ value: count() }).from(exercises);
+  if (moduleFilter) {
+    countQuery = countQuery.where(eq(exercises.moduleId, moduleFilter)) as typeof countQuery;
+  }
+  const total = countQuery.get()?.value ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  // Fetch page
   let query = db
     .select({
       id: exercises.id,
@@ -31,9 +42,13 @@ export async function GET(req: NextRequest) {
     query = query.where(eq(exercises.moduleId, moduleFilter)) as typeof query;
   }
 
-  const rows = query.orderBy(exercises.moduleId, exercises.sortOrder, desc(exercises.createdAt)).all();
+  const rows = query
+    .orderBy(exercises.moduleId, exercises.sortOrder, desc(exercises.createdAt))
+    .limit(limit)
+    .offset((page - 1) * limit)
+    .all();
 
-  return NextResponse.json({ exercises: rows });
+  return NextResponse.json({ exercises: rows, total, page, limit, totalPages });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,0 +1,192 @@
+# =============================================================================
+# Exercise 4: __eq__ without __hash__ (Hard)
+# =============================================================================
+# Interview scenario: The candidate must understand Python's data model.
+# Defining __eq__ without __hash__ makes objects unhashable, so they can't
+# be used in sets or as dictionary keys. This tests deep understanding of
+# Python's object protocol.
+# =============================================================================
+
+id: "py-04-unhashable-type"
+title: "Objeto no hasheable: __eq__ sin __hash__"
+briefing: "Esta clase User define __eq__ para comparar usuarios por email, pero no define __hash__. En Python, cuando defines __eq__, el __hash__ heredado se establece a None automaticamente, haciendo que los objetos no sean hasheables. Esto impide usarlos en sets o como claves de diccionario. Anade un metodo __hash__ coherente con __eq__ para que los usuarios se puedan usar en colecciones basadas en hash."
+prerequisites: []
+language: "python"
+difficulty: "hard"
+initialCode: |
+  class User:
+      _registry = []
+
+      def __init__(self, name, email):
+          self.name = name
+          self.email = email
+          User._registry.append(self)
+
+      def __eq__(self, other):
+          if not isinstance(other, User):
+              return NotImplemented
+          return self.email == other.email
+
+      def __repr__(self):
+          return f"User({self.name!r}, {self.email!r})"
+
+      @classmethod
+      def find_by_email(cls, email):
+          for user in cls._registry:
+              if user.email == email:
+                  return user
+          return None
+
+  user1 = User("Alice", "alice@example.com")
+  user2 = User("Bob", "bob@example.com")
+  user3 = User("Alice", "alice@example.com")
+
+  unique_users = set([user1, user2, user3])
+  print(f"Unique users: {unique_users}")
+  print(f"Expected 2 unique, got {len(unique_users)}")
+
+  user_dict = {user1: "admin", user2: "user"}
+  print(f"User1 role: {user_dict[user1]}")
+hints:
+  - "El error dice 'unhashable type: User'. En Python 3, si defines __eq__ en una clase, Python automaticamente establece __hash__ = None. Necesitas definir __hash__ explicitamente."
+  - "El metodo __hash__ debe ser coherente con __eq__: si dos objetos son iguales (a == b), deben tener el mismo hash (hash(a) == hash(b)). Como __eq__ compara por email, __hash__ debe basarse en email."
+  - "Anade este metodo a la clase User:\n    def __hash__(self):\n        return hash(self.email)\nEsto garantiza que usuarios con el mismo email tengan el mismo hash y se consideren duplicados en sets."
+successMessage: |
+  Correcto!
+
+  Lo que aprendiste:
+  - En Python 3, definir __eq__ sin __hash__ hace que la clase sea unhashable (__hash__ se pone a None)
+  - El contrato hash/eq exige: si a == b, entonces hash(a) == hash(b)
+  - __hash__ debe usar los mismos campos que __eq__ para mantener la coherencia
+  - Los sets y diccionarios dependen de __hash__ para funcionar correctamente
+  - El campo usado para hash debe ser inmutable (o tratarse como tal) durante la vida del objeto
+  - En entrevistas avanzadas, esta pregunta evalua el conocimiento del data model de Python
+
+i18n:
+  en:
+    title: "Unhashable Object: __eq__ without __hash__"
+    briefing: "This User class defines __eq__ to compare users by email, but does not define __hash__. In Python, when you define __eq__, the inherited __hash__ is automatically set to None, making objects unhashable. This prevents using them in sets or as dictionary keys. Add a __hash__ method consistent with __eq__ so users can be used in hash-based collections."
+    hints:
+      - "The error says 'unhashable type: User'. In Python 3, if you define __eq__ on a class, Python automatically sets __hash__ = None. You need to define __hash__ explicitly."
+      - "The __hash__ method must be consistent with __eq__: if two objects are equal (a == b), they must have the same hash (hash(a) == hash(b)). Since __eq__ compares by email, __hash__ should be based on email."
+      - "Add this method to the User class:\n    def __hash__(self):\n        return hash(self.email)\nThis ensures users with the same email have the same hash and are considered duplicates in sets."
+    successMessage: |
+      Correct!
+
+      What you learned:
+      - In Python 3, defining __eq__ without __hash__ makes the class unhashable (__hash__ is set to None)
+      - The hash/eq contract requires: if a == b, then hash(a) == hash(b)
+      - __hash__ must use the same fields as __eq__ to maintain consistency
+      - Sets and dictionaries depend on __hash__ to work correctly
+      - The field used for hashing should be immutable (or treated as such) during the object's lifetime
+      - In advanced interviews, this question tests knowledge of Python's data model
+
+validations:
+  - type: syntax
+    errorMessage: "La clase User necesita un metodo __hash__."
+    check:
+      match: "def __hash__\\(self\\)"
+    failMessage: |
+      Traceback (most recent call last):
+        File "main.py", line 28, in <module>
+          unique_users = set([user1, user2, user3])
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+      TypeError: unhashable type: 'User'
+
+      En Python 3, cuando defines __eq__, el __hash__ heredado de object se establece
+      a None. Necesitas definir __hash__ explicitamente para poder usar objetos
+      en sets y como claves de diccionario.
+
+      Anade un metodo __hash__(self) a la clase User.
+
+  - type: semantic
+    errorMessage: "El metodo __hash__ debe basarse en self.email para ser coherente con __eq__."
+    check:
+      match: "hash\\(self\\.email\\)"
+    failMessage: |
+      El metodo __hash__ debe ser coherente con __eq__. Como __eq__ compara
+      por self.email, el hash tambien debe basarse en self.email:
+
+          def __hash__(self):
+              return hash(self.email)
+
+      Si __eq__ dice que dos usuarios son iguales (mismo email), sus hashes
+      DEBEN ser iguales. De lo contrario, sets y diccionarios no funcionaran
+      correctamente.
+
+  - type: semantic
+    errorMessage: "El metodo __hash__ debe devolver hash(self.email)."
+    check:
+      custom: |
+        const hashMethod = code.match(/def __hash__\(self\):\s*\n\s*return\s+(.*)/);
+        if (!hashMethod) {
+          return { passed: false, errorMessage: "No se encontro 'def __hash__(self):' con un return." };
+        }
+        const returnExpr = hashMethod[1].trim();
+        if (!returnExpr.includes('hash(self.email)')) {
+          return { passed: false, errorMessage: "El return debe devolver hash(self.email) para ser coherente con __eq__." };
+        }
+        return { passed: true };
+    failMessage: |
+      El metodo __hash__ debe devolver hash(self.email). El patron completo es:
+
+          def __hash__(self):
+              return hash(self.email)
+
+      Usar hash() sobre un string es la forma correcta de generar un entero
+      hash valido. No uses id(self) ni hash(self.name) porque no son
+      coherentes con la comparacion por email que hace __eq__.
+
+  - type: intention
+    errorMessage: "El metodo __hash__ debe estar dentro de la clase User."
+    check:
+      custom: |
+        const classMatch = code.match(/class User:[\s\S]*?(?=\n\S|\n*$)/);
+        if (!classMatch) {
+          return { passed: false, errorMessage: "No se encontro la clase User." };
+        }
+        const classBody = classMatch[0];
+        if (!/def __hash__\(self\)/.test(classBody)) {
+          return { passed: false, errorMessage: "__hash__ debe estar definido dentro de la clase User, no fuera." };
+        }
+        return { passed: true };
+    failMessage: |
+      El metodo __hash__ debe estar definido dentro de la clase User (indentado
+      con 4 espacios, al mismo nivel que __eq__ y __repr__). Si lo defines
+      fuera de la clase, no sera un metodo de User.
+
+terminalCommands:
+  "python main.py":
+    - when:
+        not:
+          match: "def __hash__\\(self\\)"
+      output: |
+        Traceback (most recent call last):
+          File "main.py", line 28, in <module>
+            unique_users = set([user1, user2, user3])
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+        TypeError: unhashable type: 'User'
+
+        Python 3 sets __hash__ = None when you define __eq__. This means
+        User objects cannot be added to sets or used as dict keys.
+        You need to define __hash__() consistent with __eq__().
+      exitCode: 1
+
+    - when:
+        not:
+          match: "hash\\(self\\.email\\)"
+      output: |
+        Unique users: {User('Alice', 'alice@example.com'), User('Bob', 'bob@example.com'), User('Alice', 'alice@example.com')}
+        Expected 2 unique, got 3
+
+        Bug! user1 and user3 have the same email but different hashes.
+        The __hash__ method is not consistent with __eq__. Since __eq__
+        compares by email, __hash__ must also be based on email:
+            return hash(self.email)
+      exitCode: 1
+
+    - output: |
+        Unique users: {User('Alice', 'alice@example.com'), User('Bob', 'bob@example.com')}
+        Expected 2 unique, got 2
+        User1 role: admin
+      exitCode: 0

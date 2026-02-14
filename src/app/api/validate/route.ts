@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateExercise } from "@/lib/validators/engine";
 import { db } from "@/lib/db";
-import { users, submissions, progress, exercises as exercisesTable } from "@/lib/db/schema";
+import { submissions, progress, exercises as exercisesTable } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { getCurrentUserId } from "@/lib/auth/session";
+import { isDemoMode } from "@/lib/settings";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { exerciseId, code, failureCount = 0, userId, lang } = body;
+  const { exerciseId, code, failureCount = 0, lang } = body;
 
   if (!exerciseId || !code) {
     return NextResponse.json(
@@ -17,24 +19,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Require authenticated user (demo mode skips auth but won't store progress)
+  const userId = await getCurrentUserId();
+  if (!userId && !isDemoMode()) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const result = validateExercise(exerciseId, code, failureCount, lang || "es");
 
-  // Store submission if we have a userId
+  // Store submission only for authenticated users
   if (userId) {
     try {
-      // Ensure user exists
-      const existingUser = db
-        .select()
-        .from(users)
-        .where(eq(users.id, userId))
-        .get();
-
-      if (!existingUser) {
-        db.insert(users)
-          .values({ id: userId, username: "anonymous", createdAt: new Date().toISOString() })
-          .run();
-      }
-
       // Record submission
       db.insert(submissions)
         .values({
@@ -83,39 +78,48 @@ export async function POST(request: NextRequest) {
 }
 
 function unlockDependentExercises(userId: string, completedExerciseId: string) {
-  // Query all exercises from DB to find ones that depend on the completed exercise
-  const allExercises = db.select({ id: exercisesTable.id, prerequisites: exercisesTable.prerequisites }).from(exercisesTable).all();
+  // Only query exercises in the same module as the completed exercise
+  const completedExercise = db
+    .select({ moduleId: exercisesTable.moduleId })
+    .from(exercisesTable)
+    .where(eq(exercisesTable.id, completedExerciseId))
+    .get();
+  if (!completedExercise) return;
 
-  for (const row of allExercises) {
+  const moduleExercises = db
+    .select({ id: exercisesTable.id, prerequisites: exercisesTable.prerequisites })
+    .from(exercisesTable)
+    .where(eq(exercisesTable.moduleId, completedExercise.moduleId))
+    .all();
+
+  // Pre-fetch all user progress for this module in one query
+  const userProgress = db
+    .select()
+    .from(progress)
+    .where(eq(progress.userId, userId))
+    .all();
+  const progressMap = new Map(userProgress.map((p) => [p.exerciseId, p]));
+
+  for (const row of moduleExercises) {
     const prereqs: string[] = JSON.parse(row.prerequisites);
-    if (prereqs.includes(completedExerciseId)) {
-      // Check if all prerequisites are met
-      const allMet = prereqs.every((prereqId: string) => {
-        const prereqProgress = db
-          .select()
-          .from(progress)
-          .where(and(eq(progress.userId, userId), eq(progress.exerciseId, prereqId)))
-          .get();
-        return prereqProgress?.status === "completed";
-      });
+    if (!prereqs.includes(completedExerciseId)) continue;
 
-      if (allMet) {
-        const existing = db
-          .select()
-          .from(progress)
-          .where(and(eq(progress.userId, userId), eq(progress.exerciseId, row.id)))
-          .get();
+    // Check if all prerequisites are met using the pre-fetched map
+    const allMet = prereqs.every((prereqId: string) => {
+      return progressMap.get(prereqId)?.status === "completed";
+    });
 
-        if (!existing) {
-          db.insert(progress)
-            .values({ userId, exerciseId: row.id, status: "available" })
-            .run();
-        } else if (existing.status === "locked") {
-          db.update(progress)
-            .set({ status: "available" })
-            .where(eq(progress.id, existing.id))
-            .run();
-        }
+    if (allMet) {
+      const existing = progressMap.get(row.id);
+      if (!existing) {
+        db.insert(progress)
+          .values({ userId, exerciseId: row.id, status: "available" })
+          .run();
+      } else if (existing.status === "locked") {
+        db.update(progress)
+          .set({ status: "available" })
+          .where(eq(progress.id, existing.id))
+          .run();
       }
     }
   }

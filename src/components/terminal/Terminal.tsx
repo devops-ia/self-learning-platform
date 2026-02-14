@@ -43,7 +43,7 @@ export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
         for (const line of lines) {
           xtermRef.current?.writeln(line);
         }
-      } catch (_e) {
+      } catch {
         xtermRef.current?.writeln(
           `\x1b[31m${tRef.current.terminal.executionError}\x1b[0m`
         );
@@ -100,7 +100,6 @@ export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
 
       xtermRef.current = term;
 
-      term.writeln(`\x1b[1;36m${t.terminal.title}\x1b[0m`);
       term.writeln(t.terminal.helpPrompt);
       term.write("\r\n\x1b[32m$ \x1b[0m");
 
@@ -146,7 +145,7 @@ export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
         if (!disposed) {
           try {
             fitAddon.fit();
-          } catch (_e) {
+          } catch {
             // ignore resize errors on unmount
           }
         }
@@ -167,6 +166,7 @@ export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
       cleanupRef.current?.();
       cleanupRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- t accessed via tRef to avoid re-initializing xterm on language change
   }, [exerciseId, executeCommandInTerminal]);
 
   return (
