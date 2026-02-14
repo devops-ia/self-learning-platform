@@ -12,6 +12,7 @@
     ".next/**",
     "out/**",
     "build/**",
-    "scripts/**"
+    "scripts/**",
+    "next-env.d.ts"
   ]
 }
