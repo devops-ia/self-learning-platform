@@ -76,6 +76,10 @@ export default function AdminPage() {
           </div>
         </Link>
       </div>
+
+      <p className="mt-8 text-xs text-[var(--muted)] text-center">
+        v{process.env.NEXT_PUBLIC_APP_VERSION || "dev"}
+      </p>
     </div>
   );
 }
