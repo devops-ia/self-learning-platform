@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logAudit } from "@/lib/auth/audit";
+import { encrypt, safeDecrypt } from "@/lib/crypto";
 
 const verifySchema = z.object({
   code: z.string().length(6),
@@ -42,7 +43,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const valid = verifyTOTP(code, user.totpSecret);
+    // Decrypt TOTP secret
+    const decryptedSecret = safeDecrypt(user.totpSecret);
+    if (!decryptedSecret) {
+      return NextResponse.json({ error: "Invalid TOTP configuration" }, { status: 500 });
+    }
+
+    const valid = verifyTOTP(code, decryptedSecret);
     if (!valid) {
       return NextResponse.json({ error: "Invalid code" }, { status: 401 });
     }
@@ -93,10 +100,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid code" }, { status: 401 });
   }
 
-  // Save to DB
+  // Save to DB (encrypt TOTP secret)
   db.update(users)
     .set({
-      totpSecret: pendingSecret,
+      totpSecret: encrypt(pendingSecret),
       totpEnabled: true,
       updatedAt: new Date().toISOString(),
     })

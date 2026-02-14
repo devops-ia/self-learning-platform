@@ -51,11 +51,35 @@ export function validatePassword(password: string): {
   valid: boolean;
   error?: string;
 } {
-  if (password.length < 8) {
-    return { valid: false, error: "Password must be at least 8 characters" };
+  // Minimum length: 12 characters
+  if (password.length < 12) {
+    return { valid: false, error: "Password must be at least 12 characters" };
   }
+
+  // Check for common passwords
   if (COMMON_PASSWORDS.has(password.toLowerCase())) {
     return { valid: false, error: "Password is too common" };
   }
+
+  // Require at least one lowercase letter
+  if (!/[a-z]/.test(password)) {
+    return { valid: false, error: "Password must contain at least one lowercase letter" };
+  }
+
+  // Require at least one uppercase letter
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, error: "Password must contain at least one uppercase letter" };
+  }
+
+  // Require at least one number
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, error: "Password must contain at least one number" };
+  }
+
+  // Require at least one special character
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    return { valid: false, error: "Password must contain at least one special character (!@#$%^&*...)" };
+  }
+
   return { valid: true };
 }

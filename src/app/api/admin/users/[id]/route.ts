@@ -50,7 +50,7 @@ const updateUserSchema = z.object({
   role: z.enum(["admin", "user"]).optional(),
   displayName: z.string().min(1).max(100).optional(),
   username: z.string().min(2).max(50).optional(),
-  password: z.string().min(8).optional(),
+  password: z.string().min(12).optional(),
   disabled: z.boolean().optional(),
   emailVerified: z.boolean().optional(),
 });
