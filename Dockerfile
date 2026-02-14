@@ -1,7 +1,7 @@
 # =======================
 # Stage 1: Builder
 # =======================
-FROM node:24-alpine AS builder
+FROM node:25-alpine AS builder
 
 # Install build dependencies for native modules (better-sqlite3)
 RUN apk add --no-cache python3 make g++ cairo-dev jpeg-dev pango-dev giflib-dev
@@ -35,7 +35,7 @@ RUN npx esbuild src/lib/db/seed.ts --bundle --platform=node --outfile=scripts/do
 # =======================
 # Stage 2: Database Init
 # =======================
-FROM node:24-alpine AS db-init
+FROM node:25-alpine AS db-init
 
 RUN apk add --no-cache python3 make g++
 
@@ -53,7 +53,7 @@ RUN mkdir -p /app/data
 # =======================
 # Stage 3: Runtime
 # =======================
-FROM node:24-alpine AS runner
+FROM node:25-alpine AS runner
 
 # Install runtime dependencies only
 RUN apk add --no-cache dumb-init
