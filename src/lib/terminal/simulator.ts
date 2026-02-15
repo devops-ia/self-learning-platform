@@ -48,8 +48,15 @@ export function executeCommand(
     }
   }
 
-  if (handlerToExecute) {
-    return handlerToExecute(currentCode);
+  if (typeof handlerToExecute === "function") {
+    try {
+      return handlerToExecute(currentCode);
+    } catch (error) {
+      return {
+        output: `Error: command execution failed`,
+        exitCode: 1,
+      };
+    }
   }
 
   // Built-in commands
