@@ -22,13 +22,23 @@ export function executeCommand(
 
   const trimmedCommand = command.trim();
 
-  // Check for exact match first
-  if (exercise.terminalCommands[trimmedCommand]) {
-    return exercise.terminalCommands[trimmedCommand](currentCode);
+  // Check for exact match first (ensure own property and handler is a function)
+  const exactHandler = Object.prototype.hasOwnProperty.call(
+    exercise.terminalCommands,
+    trimmedCommand
+  )
+    ? exercise.terminalCommands[trimmedCommand]
+    : undefined;
+
+  if (typeof exactHandler === "function") {
+    return exactHandler(currentCode);
   }
 
   // Check for command prefix match (e.g., "kubectl logs <pod-name>" matches "kubectl logs")
   for (const [pattern, handler] of Object.entries(exercise.terminalCommands)) {
+    if (typeof handler !== "function") {
+      continue;
+    }
     if (trimmedCommand.startsWith(pattern) || pattern.startsWith(trimmedCommand)) {
       return handler(currentCode);
     }
