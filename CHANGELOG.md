@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/devops-ia/self-learning-platform/compare/v1.1.0...v1.1.1) (2026-02-15)
+
+
+### Bug Fixes
+
+* Unvalidated dynamic method call ([#17](https://github.com/devops-ia/self-learning-platform/issues/17)) ([7f271a4](https://github.com/devops-ia/self-learning-platform/commit/7f271a407534909f4a2cd88c467e9051dd1bff86))
+
 # [1.1.0](https://github.com/devops-ia/self-learning-platform/compare/v1.0.0...v1.1.0) (2026-02-15)
 
 
