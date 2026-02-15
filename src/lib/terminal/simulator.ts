@@ -22,6 +22,9 @@ export function executeCommand(
 
   const trimmedCommand = command.trim();
 
+  // Selected handler to execute after validation
+  let handlerToExecute: ((code: string) => TerminalResponse) | undefined;
+
   // Check for exact match first (ensure own property and handler is a function)
   const exactHandler = Object.prototype.hasOwnProperty.call(
     exercise.terminalCommands,
@@ -31,17 +34,22 @@ export function executeCommand(
     : undefined;
 
   if (typeof exactHandler === "function") {
-    return exactHandler(currentCode);
+    handlerToExecute = exactHandler;
+  } else {
+    // Check for command prefix match (e.g., "kubectl logs <pod-name>" matches "kubectl logs")
+    for (const [pattern, handler] of Object.entries(exercise.terminalCommands)) {
+      if (typeof handler !== "function") {
+        continue;
+      }
+      if (trimmedCommand.startsWith(pattern) || pattern.startsWith(trimmedCommand)) {
+        handlerToExecute = handler;
+        break;
+      }
+    }
   }
 
-  // Check for command prefix match (e.g., "kubectl logs <pod-name>" matches "kubectl logs")
-  for (const [pattern, handler] of Object.entries(exercise.terminalCommands)) {
-    if (typeof handler !== "function") {
-      continue;
-    }
-    if (trimmedCommand.startsWith(pattern) || pattern.startsWith(trimmedCommand)) {
-      return handler(currentCode);
-    }
+  if (handlerToExecute) {
+    return handlerToExecute(currentCode);
   }
 
   // Built-in commands
