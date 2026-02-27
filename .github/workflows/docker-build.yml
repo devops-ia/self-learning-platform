@@ -1,0 +1,23 @@
+name: Build and Push Docker Image
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    permissions:
+      artifact-metadata: write
+      attestations: write
+      contents: write
+      id-token: write
+      packages: write
+    uses: devops-ia/.github/.github/workflows/docker-build.yml@main
+    with:
+      dockerhub_repo: self-learning-platform
+      image_title: Self Learning Platform
+      image_description: Interactive DevOps learning platform for Terraform, Kubernetes, and other technologies
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
