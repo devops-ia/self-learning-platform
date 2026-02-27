@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/devops-ia/self-learning-platform/compare/v1.1.3...v1.2.0) (2026-02-27)
+
+
+### Features
+
+* Update Node.js version from 22 to 25 ([9e06057](https://github.com/devops-ia/self-learning-platform/commit/9e06057f50b97228ddb87ac9505bd751403af978)), closes [#26](https://github.com/devops-ia/self-learning-platform/issues/26)
+
 ## [1.1.3](https://github.com/devops-ia/self-learning-platform/compare/v1.1.2...v1.1.3) (2026-02-15)
 
 
