@@ -10,6 +10,7 @@ services:
       NODE_ENV: production
       PORT: ${PORT:-3000}
       HOST: ${HOST:-0.0.0.0}
+      INSECURE_TLS: ${INSECURE_TLS:-0}
     volumes:
       # Persist SQLite database
       - learning-platform-data:/app/data
