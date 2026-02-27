@@ -1,10 +1,12 @@
-.PHONY: install dev build lint seed import test clean clean-db clean-all clean-deps docker-build docker-run docker-stop docker-logs docker-clean docker-shell docker-db-backup docker-db-restore compose-up compose-down compose-logs compose-restart compose-clean help
+.PHONY: install dev dev-https dev-insecure build lint seed import test clean clean-db clean-all clean-deps docker-build docker-run docker-run-insecure docker-stop docker-logs docker-clean docker-shell docker-db-backup docker-db-restore compose-up compose-up-insecure compose-down compose-logs compose-restart compose-clean help
 
 help:
 	@echo "Development Commands"
 	@echo "===================="
 	@echo "make install              - Install npm dependencies"
-	@echo "make dev                  - Start development server"
+	@echo "make dev                  - Start development server (HTTP)"
+	@echo "make dev-https            - Start dev server with auto HTTPS (self-signed cert via Next.js)"
+	@echo "make dev-insecure         - Start dev server with TLS verification disabled (INSECURE_TLS=1)"
 	@echo "make build                - Full production build (seed + import + build)"
 	@echo "make lint                 - Run ESLint"
 	@echo "make seed                 - Create/reset database tables"
@@ -22,6 +24,7 @@ help:
 	@echo "===================="
 	@echo "make docker-build          - Build Docker image"
 	@echo "make docker-run            - Run container (Docker CLI)"
+	@echo "make docker-run-insecure   - Run container with TLS verification disabled (INSECURE_TLS=1)"
 	@echo "make docker-stop           - Stop container"
 	@echo "make docker-logs           - View container logs"
 	@echo "make docker-clean          - Remove container and image"
@@ -32,6 +35,7 @@ help:
 	@echo "Docker Compose Commands"
 	@echo "======================"
 	@echo "make compose-up            - Start services with Docker Compose"
+	@echo "make compose-up-insecure   - Start services with TLS verification disabled (INSECURE_TLS=1)"
 	@echo "make compose-down          - Stop services"
 	@echo "make compose-logs          - View Docker Compose logs"
 	@echo "make compose-restart       - Restart services"
@@ -43,6 +47,12 @@ install:
 
 dev:
 	npm run dev
+
+dev-https:
+	npm run dev:https
+
+dev-insecure:
+	INSECURE_TLS=1 npm run dev
 
 build:
 	mkdir -p data
@@ -110,11 +120,24 @@ docker-run: docker-build
 	@echo "Running container..."
 	docker run -d \
 		-p 3000:3000 \
+		-e SESSION_SECRET=supersecretkeysupersecretkey3232 \
 		-v learning-platform-data:/app/data \
 		--name learning-platform \
 		--restart unless-stopped \
 		learning-platform:latest
 	@echo "Container started: http://localhost:3000"
+
+docker-run-insecure: docker-build
+	@echo "Running container with TLS verification disabled..."
+	docker run -d \
+		-p 3000:3000 \
+		-e SESSION_SECRET=supersecretkeysupersecretkey3232 \
+		-e INSECURE_TLS=1 \
+		-v learning-platform-data:/app/data \
+		--name learning-platform \
+		--restart unless-stopped \
+		learning-platform:latest
+	@echo "Container started (insecure TLS): http://localhost:3000"
 
 docker-stop:
 	@echo "Stopping container..."
@@ -156,6 +179,11 @@ compose-up:
 	@echo "Starting services with Docker Compose..."
 	docker-compose up -d
 	@echo "Services started: http://localhost:3000"
+
+compose-up-insecure:
+	@echo "Starting services with TLS verification disabled..."
+	INSECURE_TLS=1 docker-compose up -d
+	@echo "Services started (insecure TLS): http://localhost:3000"
 
 compose-down:
 	@echo "Stopping services..."

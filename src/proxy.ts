@@ -38,23 +38,29 @@ function addSecurityHeaders(res: NextResponse) {
   // Note: 'unsafe-eval' required for Monaco Editor, 'unsafe-inline' for styles
   // In development/test, Next.js requires 'unsafe-inline' for hydration scripts
   const isProd = process.env.NODE_ENV === "production";
+  const isInsecureTls = process.env.INSECURE_TLS === "1";
+  // In production with INSECURE_TLS=1, behave like development for CSP
+  // (no upgrade-insecure-requests means inline scripts and ws: are needed)
+  const useStrictCsp = isProd && !isInsecureTls;
   const cspDirectives = [
     "default-src 'self'",
-    isProd
+    useStrictCsp
       ? "script-src 'self' 'unsafe-eval'" // Production: strict CSP
-      : "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Dev/Test: allow inline scripts for Next.js hydration
+      : "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Dev/insecure: allow inline scripts for Next.js hydration
     "style-src 'self' 'unsafe-inline'", // unsafe-inline needed for Tailwind and component styles
     "img-src 'self' data: https:", // data: for base64 images, https: for avatars
     "font-src 'self' data:",
-    isProd ? "connect-src 'self'" : "connect-src 'self' ws: wss:", // Dev: allow webpack HMR websockets
+    useStrictCsp ? "connect-src 'self'" : "connect-src 'self' ws: wss:", // Dev/insecure: allow websockets
     "frame-ancestors 'none'", // Same as X-Frame-Options: DENY
     "base-uri 'self'",
     "form-action 'self'",
     "object-src 'none'",
   ];
 
-  // Only add upgrade-insecure-requests and HSTS in production
-  if (isProd) {
+  // Only add upgrade-insecure-requests and HSTS in production,
+  // and only when TLS is not explicitly disabled (INSECURE_TLS=1).
+  const isInsecure = process.env.INSECURE_TLS === "1";
+  if (isProd && !isInsecure) {
     cspDirectives.push("upgrade-insecure-requests");
     res.headers.set(
       "Strict-Transport-Security",
