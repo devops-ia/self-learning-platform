@@ -4,7 +4,7 @@ import * as schema from "./schema";
 import { join } from "path";
 
 const dbUrl = process.env.DB_URL || "data/learning-platform.db";
-const dbPath = dbUrl.startsWith("/") ? dbUrl : join(process.cwd(), dbUrl);
+const dbPath = dbUrl.startsWith("/") ? dbUrl : join(/*turbopackIgnore: true*/ process.cwd(), dbUrl);
 const sqlite = new Database(dbPath);
 
 // Enable WAL mode for better concurrent read performance

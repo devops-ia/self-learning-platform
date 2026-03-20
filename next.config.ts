@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
-import { readFileSync } from "fs";
-
-const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
+import pkg from "./package.json";
 
 // Allow disabling TLS certificate verification for environments with
 // self-signed certs or corporate proxies (set INSECURE_TLS=1).
