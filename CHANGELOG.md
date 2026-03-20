@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/devops-ia/self-learning-platform/compare/v1.2.0...v1.3.0) (2026-03-20)
+
+
+### Features
+
+* bump the npm group across 1 directory with 15 updates ([#32](https://github.com/devops-ia/self-learning-platform/issues/32)) ([d17f52b](https://github.com/devops-ia/self-learning-platform/commit/d17f52bc9b46fcb2e2fbcc8b23302f922c229b1d))
+
 # [1.2.0](https://github.com/devops-ia/self-learning-platform/compare/v1.1.3...v1.2.0) (2026-02-27)
 
 
