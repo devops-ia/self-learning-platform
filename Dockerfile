@@ -17,6 +17,8 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
+ENV NEXT_TELEMETRY_DISABLED=1
+
 RUN mkdir -p /app/data
 
 # dependency files
