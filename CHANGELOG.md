@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/devops-ia/self-learning-platform/compare/v1.3.0...v1.3.1) (2026-03-27)
+
+
+### Bug Fixes
+
+* **deps:** bump picomatch ([#33](https://github.com/devops-ia/self-learning-platform/issues/33)) ([6e19087](https://github.com/devops-ia/self-learning-platform/commit/6e190875b25851bfdc52f52a8e0f5230f3dc72e4))
+
 # [1.3.0](https://github.com/devops-ia/self-learning-platform/compare/v1.2.0...v1.3.0) (2026-03-20)
 
 
