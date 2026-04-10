@@ -25,13 +25,13 @@
     "@simplewebauthn/server": "^13.3.0",
     "@xterm/addon-fit": "^0.11",
     "@xterm/xterm": "^6",
-    "@xyflow/react": "^12.10.1",
+    "@xyflow/react": "^12.10.2",
     "argon2": "^0.44.0",
     "better-sqlite3": "^12",
     "drizzle-orm": "^0.45",
     "iron-session": "^8.0.4",
     "js-yaml": "^4",
-    "lucide-react": "^0.577",
+    "lucide-react": "^1.7",
     "next": "^16",
     "nodemailer": "^8.0.5",
     "otplib": "^13.4.0",
@@ -46,7 +46,7 @@
     "zod": "^4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.59.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/git": "^10.0.1",
@@ -66,13 +66,13 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.0",
+    "eslint": "^10",
+    "eslint-config-next": "16.2.2",
     "semantic-release": "^25.0.3",
     "tailwindcss": "^4",
     "tsx": "^4",
-    "typescript": "^5",
-    "vitest": "^4.1.0"
+    "typescript": "^6",
+    "vitest": "^4.1.2"
   },
   "overrides": {
     "npm": ">=11.12.0",
