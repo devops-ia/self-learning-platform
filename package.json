@@ -31,7 +31,7 @@
     "drizzle-orm": "^0.45",
     "iron-session": "^8.0.4",
     "js-yaml": "^4",
-    "lucide-react": "^1.7",
+    "lucide-react": "^1.8",
     "next": "^16",
     "nodemailer": "^8.0.5",
     "otplib": "^13.4.0",
@@ -46,7 +46,7 @@
     "zod": "^4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.0",
+    "@playwright/test": "^1.59.1",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/git": "^10.0.1",
@@ -57,7 +57,7 @@
     "@types/better-sqlite3": "^7",
     "@types/js-yaml": "^4",
     "@types/node": "^25",
-    "@types/nodemailer": "^7.0.11",
+    "@types/nodemailer": "^8.0.0",
     "@types/passport": "^1.0.17",
     "@types/passport-github2": "^1.2.9",
     "@types/passport-google-oauth20": "^2.0.17",
@@ -67,12 +67,12 @@
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31",
     "eslint": "^9",
-    "eslint-config-next": "16.2.2",
+    "eslint-config-next": "16.2.3",
     "semantic-release": "^25.0.3",
     "tailwindcss": "^4",
     "tsx": "^4",
     "typescript": "^6",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.4"
   },
   "overrides": {
     "npm": ">=11.12.0",
