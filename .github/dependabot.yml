@@ -30,6 +30,9 @@ updates:
       - dependency-management
     assignees:
       - devops-ia/devops-ia
+    ignore:
+      - dependency-name: "eslint"
+        versions: [">=10"]
     groups:
       npm:
         patterns:

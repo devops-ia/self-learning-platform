@@ -121,7 +121,7 @@ jobs:
   docker-build:
     name: Docker Build (cache only)
     runs-on: ubuntu-latest
-    needs: [e2e]
+    needs: [lint, test, e2e]
 
     permissions:
       contents: read
