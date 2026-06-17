@@ -1,3 +1,10 @@
+## [1.3.5](https://github.com/devops-ia/self-learning-platform/compare/v1.3.4...v1.3.5) (2026-06-17)
+
+
+### Bug Fixes
+
+* **deps:** bump dompurify from 3.4.0 to 3.4.10 ([#51](https://github.com/devops-ia/self-learning-platform/issues/51)) ([0cfffb9](https://github.com/devops-ia/self-learning-platform/commit/0cfffb9d11c71aba3cb4b529713789a7a3adced3))
+
 ## [1.3.4](https://github.com/devops-ia/self-learning-platform/compare/v1.3.3...v1.3.4) (2026-05-02)
 
 
