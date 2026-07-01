@@ -1,3 +1,10 @@
+## [1.3.7](https://github.com/devops-ia/self-learning-platform/compare/v1.3.6...v1.3.7) (2026-07-01)
+
+
+### Bug Fixes
+
+* **deps:** bump the npm group with 16 updates ([#56](https://github.com/devops-ia/self-learning-platform/issues/56)) ([790cc57](https://github.com/devops-ia/self-learning-platform/commit/790cc572d35831890c6e9d0a47acbd4f05381419))
+
 ## [1.3.6](https://github.com/devops-ia/self-learning-platform/compare/v1.3.5...v1.3.6) (2026-06-22)
 
 
