@@ -1,3 +1,10 @@
+## [1.3.9](https://github.com/devops-ia/self-learning-platform/compare/v1.3.8...v1.3.9) (2026-07-29)
+
+
+### Bug Fixes
+
+* **deps:** bump js-yaml from 5.2.0 to 5.2.2 ([#59](https://github.com/devops-ia/self-learning-platform/issues/59)) ([9dc4854](https://github.com/devops-ia/self-learning-platform/commit/9dc48541db0720a95eff01bfc280890fb37ccd3c))
+
 ## [1.3.8](https://github.com/devops-ia/self-learning-platform/compare/v1.3.7...v1.3.8) (2026-07-25)
 
 
