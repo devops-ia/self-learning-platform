@@ -1,3 +1,15 @@
+## [1.3.11](https://github.com/devops-ia/self-learning-platform/compare/v1.3.10...v1.3.11) (2026-09-07)
+
+
+### Bug Fixes
+
+* **deps-dev:** bump @babel/core from 7.29.0 to 7.29.7 ([#74](https://github.com/devops-ia/self-learning-platform/issues/74)) ([1d01800](https://github.com/devops-ia/self-learning-platform/commit/1d018002225e2ecf6bdace7916f024f49c3dec92))
+* **deps-dev:** bump @humanfs/node from 0.16.7 to 0.16.8 ([#77](https://github.com/devops-ia/self-learning-platform/issues/77)) ([c091d91](https://github.com/devops-ia/self-learning-platform/commit/c091d912dea8985a19e8f849ea5c88571356b856))
+* **deps-dev:** bump browserslist from 4.28.1 to 4.28.9 ([#75](https://github.com/devops-ia/self-learning-platform/issues/75)) ([1281719](https://github.com/devops-ia/self-learning-platform/commit/1281719b63ff14f969ad5f0620b09aaa06992cfb))
+* **deps-dev:** bump undici from 6.27.0 to 6.28.1 ([#76](https://github.com/devops-ia/self-learning-platform/issues/76)) ([1e5d484](https://github.com/devops-ia/self-learning-platform/commit/1e5d4842b6160dfad78e3a98433f7fb7b8668b74))
+* **deps:** bump js-yaml from 4.3.0 to 4.3.2 ([#72](https://github.com/devops-ia/self-learning-platform/issues/72)) ([7b9eecc](https://github.com/devops-ia/self-learning-platform/commit/7b9eecc272673e573bbab887bed0224dd9c3feba))
+* **deps:** bump nanoid from 3.3.12 to 3.3.18 ([#78](https://github.com/devops-ia/self-learning-platform/issues/78)) ([c7d05fa](https://github.com/devops-ia/self-learning-platform/commit/c7d05faa8cf12c48ae0c2ac64e3beeccbead82c6))
+
 ## [1.3.10](https://github.com/devops-ia/self-learning-platform/compare/v1.3.9...v1.3.10) (2026-07-29)
 
 
