@@ -1,3 +1,11 @@
+## [1.3.12](https://github.com/devops-ia/self-learning-platform/compare/v1.3.11...v1.3.12) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps-dev:** bump vitest from 4.1.9 to 5.0.0 ([#81](https://github.com/devops-ia/self-learning-platform/issues/81)) ([0f16fc8](https://github.com/devops-ia/self-learning-platform/commit/0f16fc8fbc1af59b0a9b1e55212562cb3cd16004))
+* **deps:** bump nodemailer from 9.0.3 to 9.1.1 ([#80](https://github.com/devops-ia/self-learning-platform/issues/80)) ([f7f35cf](https://github.com/devops-ia/self-learning-platform/commit/f7f35cf1cf804df9d155c8feb4cd6970158865d6))
+
 ## [1.3.11](https://github.com/devops-ia/self-learning-platform/compare/v1.3.10...v1.3.11) (2026-09-07)
 
 
