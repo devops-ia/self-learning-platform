@@ -1,3 +1,11 @@
+## [1.3.13](https://github.com/devops-ia/self-learning-platform/compare/v1.3.12...v1.3.13) (2026-09-11)
+
+
+### Bug Fixes
+
+* **deps:** bump dompurify from 3.4.12 to 3.4.15 ([#83](https://github.com/devops-ia/self-learning-platform/issues/83)) ([4299261](https://github.com/devops-ia/self-learning-platform/commit/42992617a074a8d860bb7c2658cd58a7ff6778fb))
+* **deps:** bump nodemailer from 9.1.1 to 10.0.6 ([#84](https://github.com/devops-ia/self-learning-platform/issues/84)) ([533e8df](https://github.com/devops-ia/self-learning-platform/commit/533e8df36e35de6fa205f8ef005d9097ea429f46))
+
 ## [1.3.12](https://github.com/devops-ia/self-learning-platform/compare/v1.3.11...v1.3.12) (2026-09-11)
 
 
