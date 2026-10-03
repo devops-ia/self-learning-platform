@@ -31,9 +31,9 @@
     "drizzle-orm": "^0.45",
     "iron-session": "^9.0.1",
     "js-yaml": "^5",
-    "lucide-react": "^1.48",
+    "lucide-react": "^1.49",
     "next": "^16",
-    "nodemailer": "^10.0.12",
+    "nodemailer": "^10.0.13",
     "otplib": "^13.5.0",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
@@ -67,12 +67,12 @@
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31",
     "eslint": "^9",
-    "eslint-config-next": "16.3.6",
+    "eslint-config-next": "16.3.7",
     "semantic-release": "^25.0.9",
     "tailwindcss": "^4",
     "tsx": "^4",
     "typescript": "~6.0.3",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.3"
   },
   "overrides": {
     "npm": ">=11.12.0",
