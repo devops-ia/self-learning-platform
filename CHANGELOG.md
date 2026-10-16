@@ -1,3 +1,11 @@
+## [1.3.17](https://github.com/devops-ia/self-learning-platform/compare/v1.3.16...v1.3.17) (2026-10-16)
+
+
+### Bug Fixes
+
+* **deps-dev:** bump handlebars from 4.7.9 to 4.7.10 ([#95](https://github.com/devops-ia/self-learning-platform/issues/95)) ([2901c1b](https://github.com/devops-ia/self-learning-platform/commit/2901c1bcc437ba820315a760e739d8b726692125))
+* **deps:** bump source-map-js from 1.2.1 to 1.2.2 ([#94](https://github.com/devops-ia/self-learning-platform/issues/94)) ([78aa11b](https://github.com/devops-ia/self-learning-platform/commit/78aa11b755611ca84620c206c9dd10a475afd9c1))
+
 ## [1.3.16](https://github.com/devops-ia/self-learning-platform/compare/v1.3.15...v1.3.16) (2026-10-16)
 
 
