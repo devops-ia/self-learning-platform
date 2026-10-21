@@ -1,3 +1,10 @@
+## [1.3.18](https://github.com/devops-ia/self-learning-platform/compare/v1.3.17...v1.3.18) (2026-10-21)
+
+
+### Bug Fixes
+
+* **deps-dev:** bump vite from 8.3.1 to 8.3.4 ([#96](https://github.com/devops-ia/self-learning-platform/issues/96)) ([3c6817f](https://github.com/devops-ia/self-learning-platform/commit/3c6817fe909696879eb7b61a76b5306e4becdf21))
+
 ## [1.3.17](https://github.com/devops-ia/self-learning-platform/compare/v1.3.16...v1.3.17) (2026-10-16)
 
 
