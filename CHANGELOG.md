@@ -1,3 +1,14 @@
+## [1.3.20](https://github.com/devops-ia/self-learning-platform/compare/v1.3.19...v1.3.20) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps-dev:** bump esbuild from 0.27.4 to 0.28.2 ([#102](https://github.com/devops-ia/self-learning-platform/issues/102)) ([10ace9c](https://github.com/devops-ia/self-learning-platform/commit/10ace9cf4db43a1b517b0f54c1c1ac632ef39055))
+* **deps-dev:** bump undici from 6.28.1 to 6.29.1 ([#101](https://github.com/devops-ia/self-learning-platform/issues/101)) ([ec584c7](https://github.com/devops-ia/self-learning-platform/commit/ec584c7ecf6e9bf1a95bdde78c161757d9e8467e))
+* **deps:** bump next from 16.3.8 to 16.4.1 ([#100](https://github.com/devops-ia/self-learning-platform/issues/100)) ([16db635](https://github.com/devops-ia/self-learning-platform/commit/16db6352882ddc1c8bf91c9cbf9fbb1a73bc7e30))
+* **deps:** bump nodemailer from 10.0.13 to 10.1.4 ([#99](https://github.com/devops-ia/self-learning-platform/issues/99)) ([72224b3](https://github.com/devops-ia/self-learning-platform/commit/72224b36508751359699389b8901fbd60408e874))
+* **deps:** bump zod from 4.6.5 to 4.6.7 ([#98](https://github.com/devops-ia/self-learning-platform/issues/98)) ([5dae74a](https://github.com/devops-ia/self-learning-platform/commit/5dae74a5146138c69a6b13bfd5e3e4c1a626b27f))
+
 ## [1.3.19](https://github.com/devops-ia/self-learning-platform/compare/v1.3.18...v1.3.19) (2026-10-30)
 
 
