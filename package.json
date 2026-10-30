@@ -33,7 +33,7 @@
     "js-yaml": "^5",
     "lucide-react": "^1.49",
     "next": "^16",
-    "nodemailer": "^10.1.4",
+    "nodemailer": "^10.3.1",
     "otplib": "^13.5.0",
     "passport": "^0.7.0",
     "passport-github2": "^0.1.12",
