@@ -1,3 +1,10 @@
+## [1.3.21](https://github.com/devops-ia/self-learning-platform/compare/v1.3.20...v1.3.21) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** bump nodemailer from 10.1.4 to 10.3.1 ([#103](https://github.com/devops-ia/self-learning-platform/issues/103)) ([fdb0ded](https://github.com/devops-ia/self-learning-platform/commit/fdb0ded43b8d316eca8d7da13121cf7715353f40))
+
 ## [1.3.20](https://github.com/devops-ia/self-learning-platform/compare/v1.3.19...v1.3.20) (2026-10-30)
 
 
