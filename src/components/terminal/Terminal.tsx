@@ -13,8 +13,10 @@ export default function Terminal({ exerciseId, codeRef }: TerminalProps) {
   const { lang, t } = useT();
   const langRef = useRef(lang);
   const tRef = useRef(t);
-  langRef.current = lang;
-  tRef.current = t;
+  useEffect(() => {
+    langRef.current = lang;
+    tRef.current = t;
+  }, [lang, t]);
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<import("@xterm/xterm").Terminal | null>(null);
   const inputBuffer = useRef("");
