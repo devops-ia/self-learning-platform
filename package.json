@@ -31,7 +31,7 @@
     "drizzle-orm": "^0.45",
     "iron-session": "^9.0.1",
     "js-yaml": "^5",
-    "lucide-react": "^1.49",
+    "lucide-react": "^1.64",
     "next": "^16",
     "nodemailer": "^10.3.1",
     "otplib": "^13.5.0",
@@ -46,7 +46,7 @@
     "zod": "^4"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.1",
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/git": "^11.0.1",
@@ -67,12 +67,12 @@
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31",
     "eslint": "^9",
-    "eslint-config-next": "16.3.7",
+    "eslint-config-next": "16.4.3",
     "semantic-release": "^25.0.9",
     "tailwindcss": "^4",
     "tsx": "^4",
     "typescript": "~6.0.3",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   },
   "overrides": {
     "npm": ">=11.12.0",
