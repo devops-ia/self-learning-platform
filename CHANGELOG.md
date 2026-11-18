@@ -1,3 +1,10 @@
+## [1.3.23](https://github.com/devops-ia/self-learning-platform/compare/v1.3.22...v1.3.23) (2026-11-18)
+
+
+### Bug Fixes
+
+* **deps:** bump next from 16.4.3 to 16.4.5 ([#107](https://github.com/devops-ia/self-learning-platform/issues/107)) ([09f62e5](https://github.com/devops-ia/self-learning-platform/commit/09f62e551a82d55958052791d679cfe97203802f))
+
 ## [1.3.22](https://github.com/devops-ia/self-learning-platform/compare/v1.3.21...v1.3.22) (2026-11-02)
 
 
